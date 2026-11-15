@@ -74,7 +74,7 @@ class Ledger:
             if kind not in ("inference_completed", "inference_failed"):
                 continue
             detail = json.loads(raw)
-            reason = detail.get("reason")
+            reason = detail.get("route")
             if isinstance(reason, str):
                 per_route[reason] = per_route.get(reason, 0) + 1
             model = detail.get("model")
