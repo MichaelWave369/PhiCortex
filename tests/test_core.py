@@ -39,22 +39,23 @@ class LedgerTests(unittest.TestCase):
             result = cortex.chat({"messages": [{"role": "user", "content": "my private words"}]})
             self.assertEqual(result["choices"][0]["message"]["content"], "pong")
             self.assertEqual(cortex.ledger.count(), 1)
-            cortex.ledger.close()
+            cortex.close()
             import sqlite3
-            with sqlite3.connect(path) as conn:
+            from contextlib import closing
+            with closing(sqlite3.connect(path)) as conn:
                 raw = conn.execute("SELECT detail FROM events").fetchone()[0]
             self.assertNotIn("my private words", raw)
             self.assertNotIn("pong", raw)
             reopened = Cortex(config)
             self.assertEqual(reopened.ledger.count(), 1)
-            reopened.ledger.close()
+            reopened.close()
 
     def test_no_streaming_pretense(self):
         with tempfile.TemporaryDirectory() as directory:
             cortex = Cortex(Config(db_path=os.path.join(directory,"a.db")), transport=lambda cfg,p: {})
             with self.assertRaises(RequestError):
                 cortex.chat({"messages": [{"role":"user", "content":"hi"}], "stream":True})
-            cortex.ledger.close()
+            cortex.close()
 
 
 if __name__ == "__main__":
