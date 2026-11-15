@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <title>Φ PhiCortex | Local Workspace</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar" aria-label="Conversations">
+    <div class="brand"><span class="phi">Φ</span><div><strong>PhiCortex</strong><small>Local Intelligence Workspace</small></div></div>
+    <button id="new-chat" class="primary" type="button">+ New conversation</button>
+    <label for="search">Search saved conversations</label>
+    <input id="search" type="search" placeholder="Search memory..." autocomplete="off">
+    <div id="search-results" class="items" aria-live="polite"></div>
+    <p class="subheading">Recent conversations</p>
+    <nav id="conversations" class="items" aria-label="Recent conversations"></nav>
+    <footer>Local-first · No external AI connection by default</footer>
+  </aside>
+  <main class="workspace">
+    <header><div><h1>Φ CortexMesh</h1><p>One persistent workspace. Many brains, eventually.</p></div><span id="status" class="status">Checking…</span></header>
+    <section id="messages" class="messages" aria-label="Chat messages" aria-live="polite">
+      <div class="welcome"><h2>Welcome to PhiCortex</h2><p>Start a local conversation. Your history is stored only if you explicitly enabled the history feature.</p></div>
+    </section>
+    <form id="composer" class="composer">
+      <label for="prompt">Message</label>
+      <textarea id="prompt" rows="3" maxlength="8000" placeholder="Ask the local model…" required></textarea>
+      <div class="composer-actions"><span id="notice" role="status">CPU-only model execution must be configured and verified separately.</span><button id="send" class="primary" type="submit">Send</button></div>
+    </form>
+  </main>
+</div>
+</body>
+</html>

@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
+from uuid import UUID
+from .history import HistoryStore, HistoryError
 
 
 @dataclass(frozen=True)
@@ -21,6 +23,7 @@ class Config:
     ollama_url: str = "http://127.0.0.1:11434/v1/chat/completions"
     db_path: str = "phicortex.sqlite3"
     store_transcripts: bool = False
+    enable_history: bool = False
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -30,6 +33,7 @@ class Config:
             ollama_url=os.environ.get("PHICORTEX_OLLAMA_URL", "http://127.0.0.1:11434/v1/chat/completions"),
             db_path=os.environ.get("PHICORTEX_DB", "phicortex.sqlite3"),
             store_transcripts=os.environ.get("PHICORTEX_STORE_TRANSCRIPTS", "0") == "1",
+            enable_history=os.environ.get("PHICORTEX_ENABLE_HISTORY", "0") == "1",
         )
 
 
@@ -91,6 +95,7 @@ def route(messages: list, requested_model: str | None, config: Config) -> tuple[
 
 
 def ollama_transport(config: Config, payload: dict) -> dict:
+    # Phase 1 intentionally only permits a loopback Ollama endpoint.
     from urllib.parse import urlparse
     parsed = urlparse(config.ollama_url)
     if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
@@ -110,6 +115,8 @@ class Cortex:
         self.config = config
         self.ledger = Ledger(config.db_path)
         self.transport = transport
+        self.history = HistoryStore(config.db_path) if config.enable_history else None
+        self._turn_lock = threading.Lock()
 
     def chat(self, request: dict) -> dict:
         if not isinstance(request, dict):
@@ -136,3 +143,92 @@ class Cortex:
             entry["response"] = result.get("choices")
         self.ledger.record("inference_completed", entry)
         return result
+
+    def _history(self) -> HistoryStore:
+        if self.history is None:
+            raise RequestError("conversation retention is disabled; set PHICORTEX_ENABLE_HISTORY=1", 501)
+        return self.history
+
+    def delete_conversation(self, conv_id: str) -> None:
+        history = self._history()
+        if not self._turn_lock.acquire(blocking=False):
+            raise RequestError('cannot delete while a turn is generating', 409)
+        try:
+            try:
+                history.delete(self._uuid(conv_id))
+            except HistoryError as exc:
+                raise RequestError(str(exc), exc.status) from exc
+        finally:
+            self._turn_lock.release()
+
+    def close(self) -> None:
+        if self.history is not None:
+            self.history.close()
+        self.ledger.close()
+
+    @staticmethod
+    def _uuid(value: str) -> str:
+        try:
+            return str(UUID(value))
+        except (ValueError, AttributeError, TypeError) as exc:
+            raise RequestError("invalid UUID", 400) from exc
+
+    def complete_turn(self, conv_id: str, request: dict) -> dict:
+        history = self._history()
+        conv_id = self._uuid(conv_id)
+        if not isinstance(request, dict) or not isinstance(request.get('message'), str):
+            raise RequestError('message must be a string')
+        message = request['message'].strip()
+        if not message or len(message) > 8000 or '\x00' in message:
+            raise RequestError('message must have 1-8000 characters and no NUL bytes')
+        req_id = self._uuid(request.get('request_id'))
+        try:
+            existing = history.replay(conv_id, req_id, message)
+            if existing is not None:
+                return existing
+        except HistoryError as exc:
+            raise RequestError(str(exc), exc.status) from exc
+        if not self._turn_lock.acquire(blocking=False):
+            raise RequestError('another turn is generating; retry', 409)
+        try:
+            # Recheck replay after acquiring the generation lock.
+            existing = history.replay(conv_id, req_id, message)
+            if existing is not None:
+                return existing
+            page = history.page(conv_id, limit=13)
+            turns = page['turns'][-12:]
+            expected_last = page['turns'][-1]['id'] if page['turns'] else None
+            trimmed = page['older_before'] is not None or len(page['turns']) > 12
+            messages=[{'role':'system','content':'You are a helpful, truthful assistant. State uncertainty clearly.'}]
+            for turn in turns:
+                messages.extend([{'role':'user','content':turn['user_text']},
+                                 {'role':'assistant','content':turn['assistant_text']}])
+            messages.append({'role':'user','content':message})
+            # Approximate character budget only. True token accounting is a later milestone.
+            while sum(len(item['content']) for item in messages) > 6000 and len(messages) > 2:
+                del messages[1:3]
+                trimmed = True
+            if sum(len(item['content']) for item in messages) > 6000:
+                raise RequestError('message exceeds provisional context budget', 413)
+            started=time.perf_counter()
+            result=self.chat({'model':'phicortex-auto','messages':messages})
+            try:
+                choice=result['choices'][0]
+                answer=choice['message']['content']
+                finish_reason=choice.get('finish_reason','stop')
+                if not isinstance(answer,str) or not answer.strip() or finish_reason not in ('stop','length'):
+                    raise ValueError('model did not return a complete text reply')
+                usage=result.get('usage') if isinstance(result.get('usage'),dict) else {}
+                # Do not store malformed counts.
+                usage={k:v for k,v in usage.items() if k in ('prompt_tokens','completion_tokens') and type(v) is int and v>=0}
+            except (KeyError, IndexError, TypeError, ValueError) as exc:
+                raise RequestError('invalid model reply; turn not saved',502) from exc
+            try:
+                return history.save(conv_id,req_id,message,expected_last,answer,result.get('model',self.config.chat_model),
+                                    int((time.perf_counter()-started)*1000),usage,finish_reason,trimmed)
+            except HistoryError as exc:
+                raise RequestError(str(exc),exc.status) from exc
+        except HistoryError as exc:
+            raise RequestError(str(exc),exc.status) from exc
+        finally:
+            self._turn_lock.release()

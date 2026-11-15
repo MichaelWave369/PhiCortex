@@ -1,9 +1,26 @@
-# Security status
+# Security status and boundaries
 
-**Phase 1 is a local development gateway, not a hardened autonomous agent.** Do not expose port 8765 through a public interface or reverse proxy. There is no authentication yet.
+**Phase 1 is local development software, not a hardened agent runtime.** No external API, browser control, filesystem editing, SSH, or sandbox execution is exposed. Do not bind the gateway to public networks or expose port 8765 through a reverse proxy. There is no authentication yet.
 
-Implemented: listener bound to loopback; inference backend restricted to loopback; registered-model allowlist; text-only basic message validation; 1 MiB request cap; metadata-only persistence by default; no remote tools or arbitrary code execution.
+## Implemented
 
-Not implemented: user authentication, rate limiting, hardened auditing, worker isolation, filesystem execution, independent Governor, web reader quarantine, permission grants, credential vault, or GPU monitoring.
+- Loopback-only HTTP listener on port 8765.
+- Loopback-only Ollama backend URL; outbound requests are limited to a configured local backend.
+- No execution of generated shell commands or downloaded content.
+- Registered-model allowlist and basic text-only request validation.
+- 1 MiB HTTP request limit; errors surfaced as JSON; metadata-only event persistence by default.
 
-Before external side effects are enabled, a separately enforced Governor must validate authenticated actor, approved asset, operation scope, expiry and budget. Treat external content as untrusted data. Use suitably tested sandbox isolation and default-deny egress for generated code. Require dry runs, backups, rollback and owner approval for irreversible actions.
+## Not implemented yet
+
+- Authentication, per-user permissions, rate limits, sandbox governance, hardened egress rules, prompt-injection defenses, secure encrypted audit log, independent immutable evaluation, API-key management.
+- Stream responses, distributed workers and real GPU monitoring.
+
+## Required before external actions
+
+A separate Governor process must verify authenticated actor, asset scope, action permission and time budget before any tool call. Treat website content, retrieved documents and model output as untrusted. Use microVM or comparably evaluated execution isolation for untrusted code; the final choice requires environment-specific testing. Live changes demand dry run, backup/rollback and appropriate owner approval. Do not let Dream mode alter deployment policy or benchmark definitions.
+
+## Opt-in saved conversations (integration slice)
+
+`PHICORTEX_ENABLE_HISTORY=1` enables plaintext transcript storage and SQLite FTS5 indexing. This is separate from the metadata event ledger and does not honor `PHICORTEX_STORE_TRANSCRIPTS` as a history switch. Without the history flag, the new conversation endpoints return HTTP 501. Both browser and API are bound to loopback; Host and Origin checks prevent ordinary cross-origin browser use, and conversation writes require a custom request header. These checks do not authenticate local processes. The browser deliberately renders model output using `textContent` rather than HTML. History deletion removes active database/index entries; historical backups and disk-level recovery are outside this guarantee.
+
+Not yet implemented: encrypted storage, token-based local authentication, exact prompt token budgeting, complete per-user isolation, model provenance checks or a protected Governor. Keep the database on a private local disk, review your backup retention, and never expose the API through a public tunnel.
