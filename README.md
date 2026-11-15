@@ -101,3 +101,22 @@ Write requests require `X-PhiCortex-Request: 1`; the Nova-style header `X-Mesh-R
 **Privacy:** When `PHICORTEX_ENABLE_HISTORY=1`, messages and model responses are stored as **plaintext** in the configured SQLite database and its FTS5 index. This is independent of `PHICORTEX_STORE_TRANSCRIPTS`, which controls the event ledger. Never enable history on a machine whose local accounts or backups you do not trust. Deleting a conversation removes its database rows and current search hits but is not a secure guarantee about disk recovery, backups, or replicas. The browser renders replies as plain text rather than executable HTML.
 
 **Limitations:** No frontend streaming, real token-aware context selection, encryption at rest, model readiness polling, multi-client authentication, automatic model download, long-term semantic memory, distributed workers, or production Governor yet. Context trimming uses a conservative character budget and keeps only recent turns; it is not equivalent to exact llama.cpp tokenization. Do not expose the listener to the internet or place behind a public reverse proxy.
+
+
+## Measured Brain Colony (Phase 2, initial implementation)
+
+The optional `PHICORTEX_REASON_MODEL` adds a third **logical** role alongside chat
+and code. The default router remains cheap, deterministic, and explainable. It
+never connects to unknown remote models. Read-only endpoints:
+`GET /v1/colony` (configured roles and honest verification flags) and
+`GET /v1/telemetry` (observed counts and latency, **not** model quality).
+
+The new known-answer evaluation runner uses real local inference when invoked:
+
+~~~bash
+PYTHONPATH=src python -m phicortex.evaluate --cases benchmarks/cases.example.json --out benchmarks/local-report.json
+~~~
+
+The included examples are **public development smoke tests**, not a held-out
+capability benchmark. No automatic router promotion, GPU monitoring, or new
+permissions are introduced. Full usage and limitations: [Measured colony](docs/MEASURED_COLONY.md).

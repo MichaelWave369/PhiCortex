@@ -14,12 +14,14 @@ from pathlib import Path
 from typing import Callable
 from uuid import UUID
 from .history import HistoryStore, HistoryError
+from .colony import choose, classify, registry, RoutingError, POLICY_VERSION
 
 
 @dataclass(frozen=True)
 class Config:
     chat_model: str = "qwen3:4b"
     code_model: str = "qwen3:4b"
+    reason_model: str | None = None
     ollama_url: str = "http://127.0.0.1:11434/v1/chat/completions"
     db_path: str = "phicortex.sqlite3"
     store_transcripts: bool = False
@@ -30,6 +32,7 @@ class Config:
         return cls(
             chat_model=os.environ.get("PHICORTEX_CHAT_MODEL", "qwen3:4b"),
             code_model=os.environ.get("PHICORTEX_CODE_MODEL", "qwen3:4b"),
+            reason_model=os.environ.get("PHICORTEX_REASON_MODEL") or None,
             ollama_url=os.environ.get("PHICORTEX_OLLAMA_URL", "http://127.0.0.1:11434/v1/chat/completions"),
             db_path=os.environ.get("PHICORTEX_DB", "phicortex.sqlite3"),
             store_transcripts=os.environ.get("PHICORTEX_STORE_TRANSCRIPTS", "0") == "1",
@@ -59,6 +62,45 @@ class Ledger:
         with self.lock:
             return int(self.connection.execute("SELECT COUNT(*) FROM events").fetchone()[0])
 
+    def metrics(self, limit: int = 2000) -> dict:
+        """Observed request telemetry only; no fabricated quality ratings."""
+        with self.lock:
+            rows = self.connection.execute(
+                "SELECT kind, detail FROM events ORDER BY id DESC LIMIT ?", (limit,)
+            ).fetchall()
+        per_model = {}
+        per_route = {}
+        for kind, raw in rows:
+            if kind not in ("inference_completed", "inference_failed"):
+                continue
+            detail = json.loads(raw)
+            reason = detail.get("reason")
+            if isinstance(reason, str):
+                per_route[reason] = per_route.get(reason, 0) + 1
+            model = detail.get("model")
+            if not isinstance(model, str):
+                continue
+            metrics = per_model.setdefault(model, {
+                "completed": 0, "failed": 0, "latency_samples": 0,
+                "average_latency_ms": None, "reported_output_tokens": 0,
+            })
+            if kind == "inference_failed":
+                metrics["failed"] += 1
+                continue
+            metrics["completed"] += 1
+            latency = detail.get("latency_ms")
+            if isinstance(latency, (int, float)) and not isinstance(latency, bool) and latency >= 0:
+                previous = metrics["average_latency_ms"] or 0
+                count = metrics["latency_samples"]
+                metrics["average_latency_ms"] = round((previous * count + latency) / (count + 1), 3)
+                metrics["latency_samples"] += 1
+            usage = detail.get("usage")
+            tokens = usage.get("completion_tokens") if isinstance(usage, dict) else None
+            if type(tokens) is int and tokens >= 0:
+                metrics["reported_output_tokens"] += tokens
+        return {"window_events": len(rows), "models": per_model, "routes": per_route,
+                "quality_scores": "not_measured", "cpu_only_verified": False}
+
     def close(self) -> None:
         with self.lock:
             self.connection.close()
@@ -83,15 +125,11 @@ def route(messages: list, requested_model: str | None, config: Config) -> tuple[
         raise RequestError("a user message is required")
     if user_text.lower().startswith(("/build", "/test", "/dream")):
         raise RequestError("BUILD, TEST, and DREAM are planned but not implemented", 501)
-    allowed = {"phicortex-auto", config.chat_model, config.code_model}
-    if requested_model is not None and requested_model not in allowed:
-        raise RequestError("model is not registered", 400)
-    if requested_model and requested_model != "phicortex-auto":
-        return requested_model, "explicit-registered-model"
-    code_hints = ("python", "javascript", "typescript", "debug", "fix the code", "stack trace", "unit test")
-    if any(hint in user_text.lower() for hint in code_hints):
-        return config.code_model, "deterministic-code-keyword"
-    return config.chat_model, "default-chat"
+    try:
+        decision = choose(messages, requested_model, config)
+    except RoutingError as exc:
+        raise RequestError(str(exc), 400) from exc
+    return decision.model, decision.reason
 
 
 def ollama_transport(config: Config, payload: dict) -> dict:
@@ -132,11 +170,11 @@ class Cortex:
         try:
             result = self.transport(self.config, payload)
         except RequestError as exc:
-            self.ledger.record("inference_failed", {"model": model, "reason": reason, "status": exc.status})
+            self.ledger.record("inference_failed", {"model": model, "reason": reason, "task_class": classify(messages), "policy_version": POLICY_VERSION, "status": exc.status})
             raise
         if not isinstance(result, dict) or not isinstance(result.get("choices"), list):
             raise RequestError("invalid response from inference backend", 502)
-        entry = {"model": model, "route": reason, "latency_ms": round((time.perf_counter() - start) * 1000, 2),
+        entry = {"model": model, "task_class": classify(messages), "policy_version": POLICY_VERSION, "route": reason, "latency_ms": round((time.perf_counter() - start) * 1000, 2),
                  "usage": result.get("usage") if isinstance(result.get("usage"), dict) else None}
         if self.config.store_transcripts:
             entry["messages"] = messages

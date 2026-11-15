@@ -1,0 +1,5 @@
+[
+  {"id": "arithmetic-four", "prompt": "Reply with only the number: What is 2 + 2?", "expected": "4", "match": "exact"},
+  {"id": "capital-france", "prompt": "Reply with only the city name: What is the capital of France?", "expected": "Paris", "match": "exact"},
+  {"id": "format-uppercase", "prompt": "Reply with only this word in uppercase: router", "expected": "ROUTER", "match": "exact"}
+]
