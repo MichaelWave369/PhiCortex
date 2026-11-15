@@ -1,68 +1,76 @@
-# Φ PhiCortex: seven-brain council synthesis
+# Φ PhiCortex: Council Synthesis v0.1
 
 ## Mission
-Create a CPU-first, local-first distributed cognitive platform with progressively **verified** capabilities, not a presumed superintelligence.
 
-## Responsibilities
+Build a **CPU-first, local-first distributed cognitive operating system**, increasing *verified capabilities* over time rather than asserting superintelligence from orchestration alone. Models are replaceable workers; core knowledge and policies remain independently owned and inspectable.
 
-| Contributor | Preserved contribution |
+## Council responsibilities
+
+| Contributor | Architecture insight preserved |
 | --- | --- |
-| GPT / CortexMesh | Core contracts, local bootstrap, deterministic mathematics and telemetry |
-| Meta / ORION | Orchestration, task frames, Git worktrees, worker permissions |
-| Kimi / AURORA | Capability chart, measured routing, performance improvement proposals |
-| Grok / LATTICE | CHAT/DREAM/BUILD/TEST state machines, swappable model specialists |
-| Claude / NEXUS | External Governor, protected evaluations, scoped credentials |
-| Gemini / AETHER | Measured CPU/GPU escalation, chaos testing |
-| Vessie / DREAMER | Labeled speculation, cross-domain hypotheses, reality bridge |
+| GPT / CortexMesh | Shared contracts, CPU-first bootstrap, deterministic mathematics and measurements |
+| Meta / ORION | Orchestration, task frames, worktree isolation and permission tiers |
+| Kimi / AURORA | Measured capability registry, cost ledger, outcome-trained routing candidates |
+| Grok / LATTICE | Explicit CHAT/DREAM/BUILD/TEST state machines, interchangeable specialists |
+| Claude / NEXUS | Independent Governor, protected evaluation sets, permission enforcement |
+| Gemini / AETHER | Measured CPU-to-GPU escalation, independent adversarial test workers |
+| Vessie / DREAMER | Explicitly speculative cross-domain hypotheses and reality-bridge tests |
 
-These are **architectural design influences**, not linked or running external AI providers.
+These are functional inspirations, not claims that seven named AI services are connected.
 
-## Desired architecture
+## Data flow
 
-~~~mermaid
+```mermaid
 flowchart TD
- U[Operator / PhiOS / apps] --> G[Gateway + Governor]
- G --> R[Task state machine + model router]
- R --> B[Brain registry / local inference]
- R --> M[Second brain / retrieval]
- R --> X[Sandbox workers]
- B --> E[Telemetry / evidence ledger]
- M --> E
- X --> E
- E --> V[Protected evaluator]
- V -->|candidate changes| A[Human approval / canary / rollback]
- A --> R
-~~~
+  U[Operator / PhiOS / apps] --> G[Gateway + Governor]
+  G --> R[State machine + router]
+  R --> B[Brain registry / inference]
+  R --> M[Second-brain retrieval]
+  R --> X[Sandbox worker fleet]
+  B --> E[Evidence ledger + benchmarks]
+  M --> E
+  X --> E
+  E --> V[Protected verifier]
+  V -->|candidate improvement| A[Human approval + canary + rollback]
+  A --> R
+```
 
-Only gateway, deterministic routing, local Ollama adapter, a metadata ledger and tests are currently implemented. The other blocks are design targets.
+**Current implementation:** Gateway, deterministic router, Ollama adapter, append-only-in-practice SQLite event recording, health endpoint and tests. The diagram's Governor, memory retrieval, fleet, verifier and promotion gates are future requirements, not implemented safeguards.
 
-## Target task contract (not implemented)
-Task request: task_id, actor_id, mode, goal, project_ref, context_budget, allowed_actions, max_tokens, time_limit, resource_requirements, output_schema and correlation_id.
+## Shared task contract (target, not implemented)
 
-Worker result: task_id, status, artifact paths and SHA256 hashes, independent test evidence, route trace, resource usage, provenance, and unresolved uncertainties.
+Task frame: `task_id`, `actor_id`, `mode`, `goal`, `project_ref`, `allowed_actions`, `input_refs`, `context_budget`, `time_limit`, `max_tokens`, `resource_requirements`, `output_schema`, `correlation_id`.
 
-An untrusted prompt, web page, tool output or model response must never grant its own permissions.
+Worker result: `task_id`, `status`, `artifacts[]` with SHA256 hashes, `test_evidence[]`, `route_trace`, `duration_ms`, `resource_usage`, `provenance`, `unverified_claims[]`.
 
-## Engineering phases
-1. **Current:** local chat gateway, deterministic routing, metadata persistence and tests.
-2. Streaming, measurable CPU-only benchmark, math tools, real state-machine modes and versioned memory.
-3. Protected test harness, sandboxed BUILD and TEST, artifact manifests and permission gate.
-4. Browser Reader isolation, approved tools, MCP, scoped external operations.
-5. Authenticated multi-PC worker fleet, durable task scheduling and retries.
-6. Dream consolidation, independently evaluated adaptive router candidates, optional NPU/GPU and A2A/provider adapters.
+No prompt or tool response can grant new permissions. Signed policy and authenticated identities, not natural-language claims, are the source of authority.
 
-## Critical conflicts resolved
-- Dream mode proposes changes, never deploys directly.
-- Start with deterministic routing; train the router only after held-out tests show improvement.
-- Models are logical roles; running all of them simultaneously is not a requirement.
-- Ledger data and human-reviewed knowledge are canonical; vector and graph indexes are derived views.
-- High-risk code runs in a tested isolation backend, never unrestricted on the host.
-- No arbitrary confidence thresholds without calibration.
+## Milestones
 
-## Acceptance gates
-- Verify actual CPU-only inference on target hardware, not just a config claim.
-- Demonstrate persistence after restart with transcript retention off by default.
-- Reproducibly test routing, invalid models, unimplemented modes, and API behavior.
-- Prevent a model from editing Governor policy or protected evaluation data.
-- Demonstrate sandbox confinement before enabling generated-code execution.
-- Preserve failed evaluations and make changes reversible.
+1. **Phase 1 (this PR)**: local CPU-compatible inference proxy, deterministic routing, persistent metrics and tests. Streaming, verified CPU-only execution and content memory remain open.
+2. **Phase 2**: real state-machine modes, deterministic math/unit engine, versioned project notes and full-text retrieval; prevent untrusted data becoming executable instructions.
+3. **Phase 3**: policy-enforced isolated Build/Test agents, file manifests, protected regression suite and browser Reader separation.
+4. **Phase 4**: authenticated multi-PC workers, resource discovery, durable at-least-once queue, safe retries, artifact sync and recovery.
+5. **Phase 5**: Dream consolidation and exploratory hypothesis proposals; benchmarked routing candidates promoted only after external verification, canary and rollback.
+6. **Later**: optional MCP/A2A and provider adapters, hardware-calibrated GPU/NPU tier, adapter training. External data transfers need scoped approval.
+
+## Acceptance criteria
+
+- CPU-only test on target PC proves no GPU execution, with measured time/RAM, not a prompt assertion.
+- A request can pass through local gateway into an installed model with no external network dependency.
+- Events persist across restart and transcript capture is off by default.
+- Unauthorized tool and model requests are denied, and destructive actions cannot bypass a Governor once introduced.
+- Build/test worker code never executes unsandboxed on host; worker denial and resource limits are exercised with adversarial tests.
+- Versioned files and memory can be exported, corrected and deleted according to explicit retention policy.
+- No candidate model/route/policy change is promoted solely because it scored itself highly.
+
+## Unresolved engineering decisions
+
+- Test isolation backend on Windows/WSL2 vs separate Linux KVM host.
+- Local inference benchmark and exact model registry: verify actual Ollama names and GGUF requirements.
+- Select one source-of-truth format for memory and a rebuildable semantic index.
+- Quantify routing success on an independently curated held-out suite before training any router.
+
+## Nova-inspired integration (review PR)
+
+An optional local browser workspace and `HistoryStore` expose Nova-style conversations, cursor history, retry keys, FTS5 search and deletion. The store is activated only with `PHICORTEX_ENABLE_HISTORY=1` because transcripts are plaintext. This adds a conversation memory foundation but does not implement semantic or procedural memory. It uses the existing Ollama-compatible gateway (no new model downloader or runtime), and token trimming is only approximate pending a verified token-counting adapter. See `docs/NOVA_INTEGRATION.md` for attribution, boundaries and remaining parity gaps.

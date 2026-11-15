@@ -23,7 +23,7 @@ class APITests(unittest.TestCase):
         self.server.shutdown()
         self.server.server_close()
         self.thread.join()
-        self.cortex.ledger.close()
+        self.cortex.close()
         self.tmp.cleanup()
 
     def request(self, method, path, body=None):
