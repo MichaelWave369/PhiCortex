@@ -130,7 +130,8 @@ def _consume_nonce(database: Path, nonce: str, expires: int) -> None:
     if database.is_symlink():
         raise GovernorError("symlinked replay ledger refused")
     database.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    with sqlite3.connect(database, timeout=5) as conn:
+    conn = sqlite3.connect(database, timeout=5)
+    try:
         conn.execute("CREATE TABLE IF NOT EXISTS consumed_permits (nonce TEXT PRIMARY KEY, expires INTEGER NOT NULL)")
         try:
             # SQLite PRIMARY KEY is the atomic replay guard, even under concurrency.
@@ -138,6 +139,10 @@ def _consume_nonce(database: Path, nonce: str, expires: int) -> None:
             conn.commit()
         except sqlite3.IntegrityError as exc:
             raise GovernorError("permit replay refused") from exc
+    finally:
+        # A SQLite connection context manager does not close the handle.
+        # Explicit close matters on Windows for cleanup, backup, and rotation.
+        conn.close()
 
 
 def verify_and_consume(permit: dict, job: dict, key: bytes, replay_db: Path,
@@ -208,9 +213,11 @@ def main(argv=None) -> int:
                        args.image, args.seconds)
             # Never store the signing secret or permit inside the mounted project.
             target = args.out.expanduser().resolve()
+            secret_path = args.key_file.expanduser().resolve(strict=True)
             workspace = Path(job["workspace"])
-            if target == workspace or workspace in target.parents:
-                raise GovernorError("permit output must be outside the workspace")
+            if any(path == workspace or workspace in path.parents
+                   for path in (target, secret_path)):
+                raise GovernorError("operator key and permit must be outside the workspace")
             issued = issue(job, load_key(args.key_file), ttl=args.ttl)
             write_permit(args.out, issued)
             print("Approved a short-lived single-use task permit.")
