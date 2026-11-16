@@ -179,3 +179,19 @@ Windows NTFS ACLs require operator inspection and there is no online CRL,
 OCSP or automated rotation. Never put the CA private key, node TLS key or
 Ed25519 signing key into the repository, the model context or cloud storage.
 See [Lab PKI](LAB_PKI.md).
+
+
+## Advisory modes and operator-managed project notes
+
+Mode is strictly a local model routing hint, not a Governor permission,
+worker job, code deployment, filesystem tool or background DREAM
+scheduler. Invalid modes are rejected, and legacy slash commands remain
+disabled. Explicit model choices still require the configured allowlist.
+
+The separate notes CLI stores UTF-8 Markdown bodies and FTS5 index
+in PLAINTEXT on local disk. Retrieved notes are untrusted data and
+are never automatically appended to prompts. Historical version hashes
+can detect content mismatch, but this SQLite store is not tamper-proof.
+Archive removes search hits; explicit confirmed purge deletes current
+database rows but cannot ensure backup, journal or SSD secure erasure.
+See [LATTICE foundation](LATTICE_MODES_NOTES.md).

@@ -10,7 +10,8 @@ import re
 
 
 MODEL_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
-POLICY_VERSION = "deterministic-v2"
+POLICY_VERSION = "deterministic-v3-mode-advisory"
+MODES = ("chat", "dream", "build", "test")
 CODE_HINTS = ("python", "javascript", "typescript", "debug", "fix the code",
               "stack trace", "unit test", "write code", "implement function")
 REASON_HINTS = ("architecture tradeoff", "compare architectures", "deep reasoning",
@@ -28,6 +29,9 @@ class Decision:
     task_class: str
     reason: str
     policy_version: str = POLICY_VERSION
+    mode: str = "chat"
+    mode_source: str = "default"
+    execution_authorized: bool = False
 
 
 def registry(config) -> dict[str, str]:
@@ -54,22 +58,52 @@ def classify(messages: list) -> str:
     return "chat"
 
 
-def choose(messages: list, requested_model: str | None, config) -> Decision:
+def validate_mode(mode: str | None) -> str:
+    """Only an explicit, allowlisted request mode may override legacy routing.
+
+    These modes govern *advisory inference selection only*: no chat request
+    can launch a worker, consume a Governor permit or change deployment policy.
+    """
+    if mode is None:
+        return "chat"
+    if not isinstance(mode, str) or mode not in MODES:
+        raise RoutingError("mode must be chat, dream, build or test")
+    return mode
+
+
+def choose(messages: list, requested_model: str | None, config,
+           *, mode: str | None = None) -> Decision:
     profiles = registry(config)
+    selected_mode = validate_mode(mode)
+    source = "operator-request" if mode is not None else "default"
     task_class = classify(messages)
     chosen = "phicortex-auto" if requested_model is None else requested_model
     if not isinstance(chosen, str) or chosen not in {"phicortex-auto", *profiles.values()}:
         raise RoutingError("model is not registered")
+    def decision(model: str, role: str, reason: str) -> Decision:
+        return Decision(model, role, task_class, reason,
+                        mode=selected_mode, mode_source=source)
     if chosen != "phicortex-auto":
         role = next(role for role, model in profiles.items() if model == chosen)
-        return Decision(chosen, role, task_class, "explicit-registered-model")
+        return decision(chosen, role, "explicit-registered-model")
+    if mode is not None:
+        if selected_mode in ("build", "test"):
+            return decision(profiles["code"], "code",
+                            "operator-" + selected_mode + "-advisory-code")
+        if selected_mode == "dream":
+            if "reason" in profiles:
+                return decision(profiles["reason"], "reason",
+                                "operator-dream-advisory-reason")
+            return decision(profiles["chat"], "chat",
+                            "operator-dream-reason-unconfigured-chat-fallback")
+        return decision(profiles["chat"], "chat", "operator-chat")
     if task_class == "code":
-        return Decision(profiles["code"], "code", task_class, "deterministic-code-keyword")
+        return decision(profiles["code"], "code", "deterministic-code-keyword")
     if task_class == "reason":
         if "reason" in profiles:
-            return Decision(profiles["reason"], "reason", task_class, "deterministic-reason-keyword")
-        return Decision(profiles["chat"], "chat", task_class, "reason-role-unconfigured-chat-fallback")
-    return Decision(profiles["chat"], "chat", task_class, "default-chat")
+            return decision(profiles["reason"], "reason", "deterministic-reason-keyword")
+        return decision(profiles["chat"], "chat", "reason-role-unconfigured-chat-fallback")
+    return decision(profiles["chat"], "chat", "default-chat")
 
 
 def overview(config) -> dict:
@@ -82,4 +116,7 @@ def overview(config) -> dict:
         "backend_readiness": "not_probed",
         "cpu_only_verified": False,
         "adaptive_policy": "not_implemented",
+        "request_modes": list(MODES),
+        "mode_authority": "advisory_inference_only",
+        "persistent_mode_state_machine": "not_implemented",
     }

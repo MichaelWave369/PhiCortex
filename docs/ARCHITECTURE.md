@@ -199,3 +199,19 @@ unchanged; the operator must explicitly bind the client's certificate
 fingerprint to the enrolled Ed25519 node UUID. No worker network service,
 remote CA, automatic rotation or code execution is introduced.
 See [Lab PKI](LAB_PKI.md).
+
+
+## LATTICE advisory modes and note retrieval (candidate)
+
+An optional request mode selects chat/reason/code inference using the
+already registered local model allowlist. BUILD/TEST modes do not invoke
+the worker, and DREAM has no autonomous cycle or persistent state.
+The old keyword router remains the default when no mode is sent.
+The metadata ledger records route, mode and source; no prompt text by
+default. This is not a persistent conversation mode state machine.
+
+Manual local project notes have revision rows, expected-version
+protection, active-version SQLite FTS5 retrieval, and exact-content
+SHA-256 citations. They do not mutate memory autonomously or enter
+the inference context without future explicit operator consent.
+See [LATTICE foundation](LATTICE_MODES_NOTES.md).

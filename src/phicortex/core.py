@@ -112,7 +112,8 @@ class RequestError(Exception):
         self.status = status
 
 
-def route(messages: list, requested_model: str | None, config: Config) -> tuple[str, str]:
+def route(messages: list, requested_model: str | None, config: Config,
+          *, mode: str | None = None) -> tuple[str, str]:
     if not isinstance(messages, list) or not messages:
         raise RequestError("messages must be a non-empty list")
     for item in messages:
@@ -126,7 +127,7 @@ def route(messages: list, requested_model: str | None, config: Config) -> tuple[
     if user_text.lower().startswith(("/build", "/test", "/dream")):
         raise RequestError("BUILD, TEST, and DREAM are planned but not implemented", 501)
     try:
-        decision = choose(messages, requested_model, config)
+        decision = choose(messages, requested_model, config, mode=mode)
     except RoutingError as exc:
         raise RequestError(str(exc), 400) from exc
     return decision.model, decision.reason
@@ -162,7 +163,13 @@ class Cortex:
         if request.get("stream", False):
             raise RequestError("streaming is not implemented in phase 1")
         messages = request.get("messages")
-        model, reason = route(messages, request.get("model", "phicortex-auto"), self.config)
+        if "mode" in request and request["mode"] is None:
+            raise RequestError("mode must be chat, dream, build or test")
+        specified_mode = request.get("mode") if "mode" in request else None
+        model, reason = route(messages, request.get("model", "phicortex-auto"),
+                              self.config, mode=specified_mode)
+        mode_label = specified_mode if specified_mode is not None else "chat"
+        mode_source = "operator-request" if specified_mode is not None else "default"
         start = time.perf_counter()
         payload = {"model": model, "messages": messages, "stream": False}
         if "temperature" in request:
@@ -170,11 +177,11 @@ class Cortex:
         try:
             result = self.transport(self.config, payload)
         except RequestError as exc:
-            self.ledger.record("inference_failed", {"model": model, "reason": reason, "task_class": classify(messages), "policy_version": POLICY_VERSION, "status": exc.status})
+            self.ledger.record("inference_failed", {"model": model, "reason": reason, "route": reason, "task_class": classify(messages), "mode": mode_label, "mode_source": mode_source, "execution_authorized": False, "policy_version": POLICY_VERSION, "status": exc.status})
             raise
         if not isinstance(result, dict) or not isinstance(result.get("choices"), list):
             raise RequestError("invalid response from inference backend", 502)
-        entry = {"model": model, "task_class": classify(messages), "policy_version": POLICY_VERSION, "route": reason, "latency_ms": round((time.perf_counter() - start) * 1000, 2),
+        entry = {"model": model, "task_class": classify(messages), "mode": mode_label, "mode_source": mode_source, "execution_authorized": False, "policy_version": POLICY_VERSION, "route": reason, "latency_ms": round((time.perf_counter() - start) * 1000, 2),
                  "usage": result.get("usage") if isinstance(result.get("usage"), dict) else None}
         if self.config.store_transcripts:
             entry["messages"] = messages

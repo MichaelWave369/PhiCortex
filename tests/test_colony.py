@@ -17,7 +17,7 @@ class RegistryRoutingTests(unittest.TestCase):
         decision = choose(user("compare architectures for reliability"), None, config)
         self.assertEqual((decision.model, decision.role, decision.task_class),
                          ("reason:1", "reason", "reason"))
-        self.assertEqual(decision.policy_version, "deterministic-v2")
+        self.assertEqual(decision.policy_version, "deterministic-v3-mode-advisory")
         self.assertEqual(route(user("debug Python"), None, config),
                          ("coder:1", "deterministic-code-keyword"))
 
