@@ -123,7 +123,7 @@ def _role(role: str, *, ip: str | None = None, node_id: str | None = None):
     if role == "server" and ip is not None and node_id is None:
         try:
             address = ipaddress.ip_address(validate_endpoint(ip, 8766, allow_lan=True))
-        except (ValueError, Exception) as exc:
+        except Exception as exc:
             raise PKIError("server address must be loopback or private RFC1918 IPv4") from exc
         cn = "phicortex-server-" + str(address)
         san = x509.SubjectAlternativeName([x509.IPAddress(address)])
@@ -131,7 +131,7 @@ def _role(role: str, *, ip: str | None = None, node_id: str | None = None):
     if role == "client" and node_id is not None and ip is None:
         try:
             _id(node_id)
-        except (ValueError, TypeError, AttributeError) as exc:
+        except Exception as exc:
             raise PKIError("client node ID must be canonical UUID") from exc
         cn = "phicortex-node-" + node_id
         san = x509.SubjectAlternativeName([
