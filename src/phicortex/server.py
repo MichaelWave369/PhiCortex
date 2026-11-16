@@ -8,6 +8,7 @@ from urllib.parse import urlsplit, parse_qs
 
 from .core import Config, Cortex, RequestError
 from .history import HistoryError
+from .colony import overview, registry
 
 MAX_REQUEST = 1_048_576
 MAX_HISTORY_REQUEST = 64 * 1024
@@ -101,9 +102,16 @@ def make_handler(cortex: Cortex):
                                   'cpu_first':'not_verified','history_enabled':cortex.history is not None})
                 return
             if path == '/v1/models' and verb == 'GET':
-                models=sorted({cortex.config.chat_model,cortex.config.code_model})
-                self.respond(200,{'object':'list','data':[{'id':'phicortex-auto','object':'model'}] +
-                              [{'id':m,'object':'model'} for m in models]})
+                models = sorted(set(registry(cortex.config).values()))
+                self.respond(200, {'object': 'list', 'data': [
+                    {'id': 'phicortex-auto', 'object': 'model'}] +
+                    [{'id': model, 'object': 'model'} for model in models]})
+                return
+            if path == '/v1/colony' and verb == 'GET':
+                self.respond(200, overview(cortex.config))
+                return
+            if path == '/v1/telemetry' and verb == 'GET':
+                self.respond(200, cortex.ledger.metrics())
                 return
             if path == '/v1/chat/completions' and verb == 'POST':
                 self.respond(200,cortex.chat(self._json_body()))
@@ -115,7 +123,7 @@ def make_handler(cortex: Cortex):
             seg=path[len('/api/v1/'):].split('/')
             if seg == ['status'] and verb == 'GET':
                 self.respond(200,{'storage':'enabled','inference':'not_probed',
-                                  'models':sorted({cortex.config.chat_model,cortex.config.code_model})})
+                                  'models':sorted(set(registry(cortex.config).values()))})
                 return
             if seg == ['conversations']:
                 if verb == 'GET':

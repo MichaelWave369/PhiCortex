@@ -74,3 +74,13 @@ No prompt or tool response can grant new permissions. Signed policy and authenti
 ## Nova-inspired integration (review PR)
 
 An optional local browser workspace and `HistoryStore` expose Nova-style conversations, cursor history, retry keys, FTS5 search and deletion. The store is activated only with `PHICORTEX_ENABLE_HISTORY=1` because transcripts are plaintext. This adds a conversation memory foundation but does not implement semantic or procedural memory. It uses the existing Ollama-compatible gateway (no new model downloader or runtime), and token trimming is only approximate pending a verified token-counting adapter. See `docs/NOVA_INTEGRATION.md` for attribution, boundaries and remaining parity gaps.
+
+
+## Measured Brain Colony v1 (candidate implementation)
+
+A role registry (chat/code/optional reason), explainable deterministic-v2 routing,
+per-model operational telemetry, and a CLI for known-answer local model comparison
+form the first measurement baseline. Neither the model registry nor the sample
+cases establish model intelligence or verified CPU-only execution. Model promotion,
+protected held-out benchmarks, calibrated risk, and adaptive policies remain future work.
+See [Measured Colony](MEASURED_COLONY.md).

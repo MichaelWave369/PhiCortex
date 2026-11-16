@@ -10,3 +10,6 @@ artifacts/
 *.sqlite3-journal
 *.sqlite3-shm
 *.sqlite3-wal
+
+# Locally measured evaluations; do not commit private benchmark reports.
+benchmarks/local-report*.json
