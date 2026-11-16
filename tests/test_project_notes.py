@@ -4,6 +4,7 @@ from hashlib import sha256
 import json
 from pathlib import Path
 import sqlite3
+from contextlib import closing
 import tempfile
 import unittest
 
@@ -112,7 +113,7 @@ class ProjectNoteTests(unittest.TestCase):
         self.assertFalse(done["disk_backups_or_recovery_covered"])
         with self.assertRaises(NoteError):
             self.notes.get("lattice", "architecture")
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db:
             self.assertEqual(db.execute("SELECT count(*) FROM project_note_versions").fetchone()[0], 0)
             self.assertEqual(db.execute("SELECT count(*) FROM project_note_fts").fetchone()[0], 0)
 

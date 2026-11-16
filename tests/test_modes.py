@@ -7,6 +7,7 @@ import http.client
 import json
 import os
 import sqlite3
+from contextlib import closing
 import tempfile
 import threading
 import unittest
@@ -139,7 +140,7 @@ class ModeHTTPTests(unittest.TestCase):
                          ["local-code", "local-code", "local-reason"])
         for payload in self.sent:
             self.assertEqual(set(payload), {"model", "messages", "stream"})
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db:
             rows = [json.loads(x[0]) for x in db.execute(
                 "SELECT detail FROM events ORDER BY id")]
         self.assertEqual([r["mode"] for r in rows], ["build", "test", "dream"])
@@ -159,7 +160,7 @@ class ModeHTTPTests(unittest.TestCase):
         status, reply = self.http({"messages": user("hello")})
         self.assertEqual(status, 200)
         self.assertEqual(reply["model"], "local-chat")
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db:
             row = json.loads(db.execute("SELECT detail FROM events").fetchone()[0])
         self.assertEqual(row["mode"], "chat")
         self.assertEqual(row["mode_source"], "default")
