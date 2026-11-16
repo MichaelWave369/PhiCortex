@@ -188,3 +188,14 @@ operator-recorded pins, and advances the shared durable node sequence before
 any send attempt. The optional acknowledgment and denial probe remain explicit.
 Diagnostics cannot prove actual two-PC deployment or sandbox isolation.
 See [Two-PC validation](TWO_PC_MESH_VALIDATION.md).
+
+
+## Operator-controlled test PKI helper (candidate)
+
+`phicortex.lab_pki` provides an offline one-time CA initializer, per-machine
+role-bound CSR generation, operator-issued P-256 X.509 certificates and public
+certificate inspection. Existing TLS transport and node registry remain
+unchanged; the operator must explicitly bind the client's certificate
+fingerprint to the enrolled Ed25519 node UUID. No worker network service,
+remote CA, automatic rotation or code execution is introduced.
+See [Lab PKI](LAB_PKI.md).

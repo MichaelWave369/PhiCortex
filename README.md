@@ -231,3 +231,13 @@ mutually authenticated TLS 1.3 heartbeat and read-only lease preview. It
 can explicitly acknowledge lease metadata or test a revocation HTTP 403,
 and saves redacted, non-overwriting reports. No source transfer, remote
 execution or task dispatch is enabled. See [Two-PC validation](docs/TWO_PC_MESH_VALIDATION.md).
+
+
+## Private lab PKI certificate provisioning (PR candidate)
+
+An optional, offline `python -m phicortex.lab_pki` helper generates a local
+ECDSA P-256 CA, role-specific CSRs on each machine, and short-lived server/client
+X.509 certificates signed only after the operator verifies the CSR identity.
+The CA private key remains on the operator PC and the worker's TLS private key
+remains on the worker PC. No network CA, auto enrollment, task dispatch or
+remote execution is added. See [Lab PKI](docs/LAB_PKI.md).

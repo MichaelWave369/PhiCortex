@@ -126,3 +126,11 @@ Record the two-PC configuration and dated probe results on your own
 machines before treating the physical acceptance gate as passed.
 
 **No remote execution, no automatic retry, evidence before autonomy.**
+
+
+### Optional CSR/CA provisioning helper
+
+The optional, offline [Lab PKI helper](LAB_PKI.md) can generate the CA, role-
+specific CSRs on the machine owning each private key, and signed public
+client/server certificates without copying the worker's private key to the
+coordinator. This is test infrastructure, **not** a hardened production CA.
