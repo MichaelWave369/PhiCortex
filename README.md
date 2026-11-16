@@ -130,3 +130,20 @@ The chat interface still does **not** support autonomous BUILD/TEST, and this is
 an independent Governor or a reviewed microVM. See [guarded worker guide](docs/GUARDED_WORKER.md)
 for prerequisites, limitations and the operator-only CLI. The Windows gateway stays
 functional, but this specific guarded execution backend requires a Linux worker.
+
+
+## Operator Governor permit + evidence vault (Phase 3 prototype)
+
+The guarded worker now requires a **short-lived, single-use, task-bound HMAC
+permit** issued by a trusted operator before any `--execute` run. The permit
+binds mode, workspace, root, pinned image, timeout, and a hash of the workspace
+files. Permit replay is refused through a durable local SQLite nonce ledger.
+
+Successful or failed executions can be archived in a **content-addressed
+SHA-256 evidence vault**. Explicitly selected small files may be stored with
+the worker result. This does **not** implement a separate, hardened Governor
+service or authenticated immutable storage. The chat API cannot issue permits
+or start jobs.
+
+See [Governor and evidence vault](docs/GOVERNOR_AND_VAULT.md) for a
+safe operator walkthrough, limits and the separation still needed.

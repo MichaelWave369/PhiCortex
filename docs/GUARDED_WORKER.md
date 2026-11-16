@@ -74,3 +74,12 @@ Introduce separately authenticated worker identities and a Governor which signs
 specific, immutable task contracts. Use a more strongly isolated runtime when
 the threat model demands it, and add a reviewed artifact vault and file-hash
 manifest. Only then expose BUILD/TEST tasks through the main API.
+
+
+## Governor and vault requirement (subsequent prototype)
+
+The execution path now requires a short-lived one-time operator HMAC permit,
+the private key, durable replay ledger, and evidence vault. Dry-run behavior
+is unchanged. See [Governor + Vault](GOVERNOR_AND_VAULT.md) for the
+authorization and archival walkthrough. The CLI-only prototype is *not*
+a remote Governor or proof of Docker/gVisor isolation.
