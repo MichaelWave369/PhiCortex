@@ -108,3 +108,19 @@ send commands over the network, enable `/build` or `/test` in chat, or
 bind node identity to a Governor approval. The SQLite event stream is not
 tamper-proof, and artifact files are not immutable while under a shared
 host account. See [Lease Recovery](LEASES.md).
+
+
+## mTLS Heartbeat Endpoint
+
+The experimental separate mesh listener uses TLS 1.3, client certificate
+verification with a configured private CA, and operator-managed cert pins
+bound to the existing signed Ed25519 node registry. It exposes exactly one
+heartbeat POST endpoint; no server-side tasks, file uploads, shell commands
+or model tools are reachable there. LAN binding is opt-in and restricted to
+explicit private IPv4 addresses; firewall protections and cert provisioning
+are **operator responsibilities**. Enrollment remains local-only.
+
+The TLS heartbeat channel authenticates node communication but does not
+authorize a worker to run code, prove the host is uncompromised or prove
+gVisor isolation. Do not expose it to the public Internet. See
+[Mesh Transport](MESH_TRANSPORT.md).

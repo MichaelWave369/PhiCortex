@@ -186,3 +186,17 @@ artifact-vault evidence. An expired or disconnected task becomes
 **review_required**, never automatically requeued. It uses the same SQLite
 database as the signed node registry and does **not** implement task transport,
 remote execution or execution authority. See [Lease Recovery](docs/LEASES.md).
+
+
+## First live Worker Mesh transport (PR candidate)
+
+`python -m phicortex.mesh_transport` adds an **opt-in TLS 1.3 / mutual TLS**
+heartbeat channel for registered node PCs. The coordinator requires a trusted
+client certificate bound by the operator to an enrolled Ed25519 node key,
+and still verifies each signed heartbeat and its replay-safe sequence.
+Only `POST /mesh/v1/heartbeats` is enabled. **No task delivery, code
+execution, node self-enrollment or remote tooling** is added.
+
+The listener defaults to 127.0.0.1, and RFC1918 LAN binding requires explicit
+`--allow-lan`, your own CA and firewall configuration. See
+[Mutual TLS Mesh Transport](docs/MESH_TRANSPORT.md).
