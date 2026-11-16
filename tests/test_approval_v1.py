@@ -93,6 +93,12 @@ class Ed25519SnapshotTests(unittest.TestCase):
         with self.assertRaises(ApprovalError):
             verify_and_consume(grant, self.job, self.public, self.replay, now=1001)
 
+    def test_rejects_invalid_public_key_file(self):
+        public = self.root / "public.key"
+        public.write_bytes(b"not-a-valid-ed25519-public-key")
+        with self.assertRaises(ApprovalError):
+            _load(public, private=False)
+
     def test_operator_keypair_not_overwritten(self):
         with self.assertRaises(ApprovalError):
             create_keypair(self.root / "private.key", self.root / "public.key")

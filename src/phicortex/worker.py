@@ -270,7 +270,7 @@ def main(argv=None) -> int:
                 permit = json.loads(args.permit_file.read_text(encoding="utf-8"))
                 from .approval_v1 import _load as load_approval_key
                 key = load_approval_key(args.public_key, private=False)
-            except (OSError, ValueError, GovernorError) as exc:
+            except (OSError, ValueError, GovernorError, ApprovalError) as exc:
                 raise WorkerError("could not load operator grant") from exc
             report = execute(job, permit=permit, key=key, replay_db=args.replay_db)
         else:
