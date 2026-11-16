@@ -84,3 +84,14 @@ form the first measurement baseline. Neither the model registry nor the sample
 cases establish model intelligence or verified CPU-only execution. Model promotion,
 protected held-out benchmarks, calibrated risk, and adaptive policies remain future work.
 See [Measured Colony](MEASURED_COLONY.md).
+
+
+## Guarded worker v0 (candidate)
+
+A CLI-only `build-check`/ `test` prototype requires explicit operator opt-in,
+a pinned container image, fixed Python commands, verified local Docker context
+and a registered gVisor `runsc` runtime. It mounts only a read-only workspace,
+blocks network access and refuses unrecognized task plans. This is **not** the
+Governor, distributed mesh, or a proven isolation boundary against hostile code.
+The higher-security execution and artifact/approval contracts remain future work.
+See [Guarded Worker](GUARDED_WORKER.md).

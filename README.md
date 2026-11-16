@@ -116,3 +116,17 @@ python -m phicortex.cpu_probe --server 'C:\path\to\llama-server.exe' --model 'C:
 This does not download models, change router policy, or independently prove GPU inactivity.
 It records the explicit CPU/offline launch controls and deterministic evaluation outcomes.
 See [CPU baseline guide](docs/CPU_BASELINE.md).
+
+
+## Guarded local BUILD-check and TEST worker (Phase 3 prototype)
+
+An optional **CLI-only** worker performs Python syntax checks or `unittest` inside a
+**local Linux Docker daemon with the gVisor `runsc` runtime**. The default is a
+non-executing dry run. Explicit execution requires the operator to enable
+`PHICORTEX_ALLOW_ISOLATED_JOBS=1`, use a locally pinned image digest, and pass
+runtime checks. There is no fallback to host execution or standard Docker `runc`.
+
+The chat interface still does **not** support autonomous BUILD/TEST, and this is not
+an independent Governor or a reviewed microVM. See [guarded worker guide](docs/GUARDED_WORKER.md)
+for prerequisites, limitations and the operator-only CLI. The Windows gateway stays
+functional, but this specific guarded execution backend requires a Linux worker.
