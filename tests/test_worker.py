@@ -59,6 +59,12 @@ class WorkerPlanTests(unittest.TestCase):
         with self.assertRaises(WorkerError):
             self.job()
 
+    def test_refuses_docker_mount_option_separators_in_workspace(self):
+        tricky = self.root / "comma,readonly=false"
+        tricky.mkdir()
+        with self.assertRaises(WorkerError):
+            plan("test", self.root, tricky, IMAGE, platform_name="Linux")
+
     def test_refuses_unapproved_modes_and_native_windows(self):
         with self.assertRaises(WorkerError):
             plan("shell", self.root, self.workspace, IMAGE, platform_name="Linux")

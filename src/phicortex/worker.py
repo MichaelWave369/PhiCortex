@@ -67,6 +67,10 @@ def plan(mode: str, root: Path, workspace: Path, image: str,
     if not isinstance(image, str) or not IMAGE_RE.fullmatch(image) or ".." in image:
         raise WorkerError("image must be a fully pinned name@sha256:<64 lowercase hex>")
     workspace = validate_workspace(root, workspace)
+    # Docker --mount parses commas as option separators. Never let an
+    # operator-controlled path modify the mount contract.
+    if any(ch in str(workspace) for ch in (",", "\\n", "\\r")):
+        raise WorkerError("workspace path contains Docker mount separators")
     if (platform_name or platform.system()) != "Linux":
         raise WorkerError("execution requires a tested Linux host; Windows may use a dedicated Linux worker")
     name = "phicortex-" + uuid4().hex[:16]
