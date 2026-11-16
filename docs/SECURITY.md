@@ -58,3 +58,21 @@ remains privileged and gVisor was not independently containment-tested here.
 Do not use for hostile/unreviewed code or remote API execution. Keep the
 signing key protected, the host fully updated, and test gVisor isolation on
 a dedicated Linux machine before expanding capabilities.
+
+
+## Asymmetric permit candidate: Ed25519
+
+The default operator CLI execution pathway now takes a public Ed25519
+verification key, not a shared HMAC signing secret. A separate CLI creates
+staged, checksum-verified copies of reviewed workspaces and signs their exact
+task/snapshot manifest. The private signing key can be kept on a different
+OS account or host. The legacy HMAC CLI execution path is disabled, but
+low-level explicit migration/tests still exist temporarily.
+
+This is **not** a privileged, always-on independent Governor. The operator
+must actually separate and protect the private key. A staged directory with
+read-only permissions is not an immutable OS snapshot; a privileged host
+writer or owner changing modes can still mutate it. Hashes are checked before
+a task launches, but the check-to-mount interval remains a TOCTOU risk.
+No real host/gVisor confinement test is claimed. See
+[asymmetric approvals](ASYMMETRIC_APPROVALS.md).

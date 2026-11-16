@@ -1,3 +1,7 @@
+> **Historical v0 guide:** the HMAC CLI execution walkthrough below has been
+> superseded by [Ed25519 approval and source snapshots](ASYMMETRIC_APPROVALS.md).
+> Do not use the commands below for new execution approvals.
+
 # PhiCortex Governor and Evidence Vault v0
 
 **State:** experimental operator-run, Linux-only execution path. Not a

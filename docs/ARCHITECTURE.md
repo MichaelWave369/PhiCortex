@@ -107,3 +107,15 @@ and explicit selected source files as SHA-256-addressed blobs with a
 verifiable manifest. The worker API remains unavailable to the LLM.
 These do not constitute a protected independent Governor or an actual
 networked sandbox system. See [Governor + Vault](GOVERNOR_AND_VAULT.md).
+
+
+## Public-key approval and source-copy staging (candidate)
+
+The operator-side Ed25519 private key signs a single-use permit for an
+approved, copied workspace tree and the fixed worker task. The Linux worker
+reads only the corresponding public key, verifies the signed manifest and
+source digest, and consumes the approval in its SQLite replay ledger before
+launch. The source staging is not a privileged/immutable snapshot; host-side
+mutation and actual container isolation must still be tested. The legacy
+HMAC helper remains for migration/tests, not the default CLI execution path.
+See [asymmetric approval design](ASYMMETRIC_APPROVALS.md).

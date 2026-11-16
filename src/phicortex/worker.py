@@ -16,7 +16,8 @@ import subprocess
 import tempfile
 import time
 from uuid import uuid4
-from .governor import verify_and_consume, load_key, GovernorError
+from .governor import verify_and_consume, GovernorError
+from .approval_v1 import ApprovalError, verify_and_consume as verify_ed25519
 from .vault import Vault, VaultError
 
 IMAGE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._/:\-]*@sha256:[0-9a-f]{64}$")
@@ -128,8 +129,9 @@ def require_runsc() -> None:
 
 
 def execute(job: dict, *, permit: dict | None = None, key: bytes | None = None,
-            replay_db: Path | None = None, guard=require_runsc,
-            launch=subprocess.Popen, cleanup=subprocess.run) -> dict:
+            replay_db: Path | None = None, allow_legacy_hmac: bool = False,
+            guard=require_runsc, launch=subprocess.Popen,
+            cleanup=subprocess.run) -> dict:
     """Run with bounded output and forced cleanup, after runtime verification.
 
     Never takes commands from a model and does not mount credentials, sockets,
@@ -162,8 +164,14 @@ def execute(job: dict, *, permit: dict | None = None, key: bytes | None = None,
     # Preflight before consuming an approval; allow no host execution fallback.
     guard()
     try:
-        verify_and_consume(permit, job, key, replay_db)
-    except GovernorError as exc:
+        if permit.get("schema") == "phicortex.governor.ed25519.v1":
+            verify_ed25519(permit, job, key, replay_db)
+        elif permit.get("schema") == "phicortex.governor.permit.v0" and allow_legacy_hmac:
+            # Explicit testing/migration opt-in; never available via CLI.
+            verify_and_consume(permit, job, key, replay_db)
+        else:
+            raise WorkerError("unsigned or legacy worker permit refused")
+    except (GovernorError, ApprovalError) as exc:
         raise WorkerError("governor refused job: " + str(exc)) from exc
     cmd = canonical["argv"]
     start = time.monotonic()
@@ -234,7 +242,8 @@ def main(argv=None) -> int:
     parser.add_argument("--out", type=Path, required=True, help="report path outside workspace")
     parser.add_argument("--execute", action="store_true", help="opt-in execution")
     parser.add_argument("--permit-file", type=Path, help="signed operator approval outside workspace")
-    parser.add_argument("--key-file", type=Path, help="owner-only 32-byte governor key")
+    parser.add_argument("--key-file", type=Path, help="deprecated HMAC key (execution refused)")
+    parser.add_argument("--public-key", type=Path, help="Ed25519 public verification key; no signer secret")
     parser.add_argument("--replay-db", type=Path, help="durable single-use approval ledger")
     parser.add_argument("--vault", type=Path, help="evidence vault directory outside workspace")
     parser.add_argument("--include", action="append", default=[], help="explicit workspace-relative evidence file")
@@ -248,16 +257,19 @@ def main(argv=None) -> int:
         if args.execute:
             if os.environ.get("PHICORTEX_ALLOW_ISOLATED_JOBS") != "1":
                 raise WorkerError("set PHICORTEX_ALLOW_ISOLATED_JOBS=1 to opt in")
-            if not all((args.permit_file, args.key_file, args.replay_db, args.vault)):
-                raise WorkerError("--permit-file, --key-file, --replay-db and --vault are required")
+            if args.key_file:
+                raise WorkerError("legacy HMAC CLI execution is retired; use Ed25519 approvals")
+            if not all((args.permit_file, args.public_key, args.replay_db, args.vault)):
+                raise WorkerError("--permit-file, --public-key, --replay-db and --vault are required")
             # No approvals, private keys, replay databases or vaults in mounted source.
-            for sensitive in (args.permit_file, args.key_file, args.replay_db, args.vault):
+            for sensitive in (args.permit_file, args.public_key, args.replay_db, args.vault):
                 selected = sensitive.expanduser().resolve()
                 if selected == Path(job["workspace"]) or Path(job["workspace"]) in selected.parents:
                     raise WorkerError("security credentials and evidence must stay outside workspace")
             try:
                 permit = json.loads(args.permit_file.read_text(encoding="utf-8"))
-                key = load_key(args.key_file)
+                from .approval_v1 import _load as load_approval_key
+                key = load_approval_key(args.public_key, private=False)
             except (OSError, ValueError, GovernorError) as exc:
                 raise WorkerError("could not load operator grant") from exc
             report = execute(job, permit=permit, key=key, replay_db=args.replay_db)
