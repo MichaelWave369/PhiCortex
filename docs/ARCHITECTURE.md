@@ -130,3 +130,15 @@ key signatures, timestamp freshness, replay and revocation before recording
 90-second liveness. No network transport, task leasing, remote worker daemon,
 GPU information or sandbox attestation is introduced. Enrollment is not
 a grant of execution authority. See [Mesh Enrollment](MESH_ENROLLMENT.md).
+
+
+## Offline Durable Lease Metadata (Phase 4 candidate)
+
+`phicortex.leases` adds a SQLite task state machine and append-only-in-practice
+transition events beside the manually enrolled node registry. A lease
+assigns pending intent only to a fresh, ready, mode-approved node and is
+bounded by its heartbeat expiry. A timely signed result must match the
+owner, lease ID and independently checked artifact-vault SHA-256.
+Expired, revoked, inconclusive and disconnected work goes to human review,
+never automatic retry. The mesh remains offline and no worker receives
+tasks through the API. See [Lease Recovery](LEASES.md).
