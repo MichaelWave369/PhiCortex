@@ -1,13 +1,16 @@
 # PhiCortex Mesh Transport v1: mutual TLS heartbeat channel
 
-**Scope:** working HTTPS/TLS 1.3 heartbeat transport, **NOT** a remote worker executor,
+**Scope:** working HTTPS/TLS 1.3 heartbeat transport and an optional
+metadata-only lease preview/acknowledgment extension, **NOT** a remote worker executor,
 job dispatcher, task API, automatic enrollment service or secure distributed AI
 deployment. Operator must separately configure a small, private lab PKI.
 
 ## What communicates
 
-The coordinator listens on **127.0.0.1:8766 by default**, and exposes **one**
-endpoint: `POST /mesh/v1/heartbeats`. All other paths return 404. The
+The coordinator listens on **127.0.0.1:8766 by default**. It supports
+signed heartbeats at `POST /mesh/v1/heartbeats` plus the optional,
+non-executable lease metadata preview/acknowledgment routes documented in
+[Mesh Lease Exchange](MESH_LEASE_EXCHANGE.md). All other paths return 404. The
 coordinator never accepts executable commands, files, tasks, scripts, Governor
 permits or arbitrary tools over this listener.
 

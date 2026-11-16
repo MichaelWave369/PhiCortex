@@ -200,3 +200,13 @@ execution, node self-enrollment or remote tooling** is added.
 The listener defaults to 127.0.0.1, and RFC1918 LAN binding requires explicit
 `--allow-lan`, your own CA and firewall configuration. See
 [Mutual TLS Mesh Transport](docs/MESH_TRANSPORT.md).
+
+
+## Encrypted Lease Preview and Receipt (Phase 4 candidate)
+
+The optional mTLS worker listener supports **signed, metadata-only**
+`POST /mesh/v1/leases/preview` and `/mesh/v1/leases/ack` routes. A
+ready node may inspect its own manually leased task ID, mode, hash and
+deadline and acknowledge receipt with its enrolled Ed25519 identity and
+TLS certificate. This is **not** task dispatch, code delivery, execution
+permission or a Governor permit. [Setup and limitations](docs/MESH_LEASE_EXCHANGE.md).

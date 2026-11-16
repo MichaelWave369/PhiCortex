@@ -164,3 +164,12 @@ No auto requeue exists, even when a heartbeat expires or a process restarts.
    side effects on restart or delayed results.
 5. Protected, independently verified artifact storage and rollback
    evidence before enabling automatic BUILD/TEST task dispatch.
+
+
+## Manual mTLS metadata preview/acknowledgment extension
+
+An enrolled and currently ready node may preview a **manually leased**
+assignment's identifiers, mode, digest and deadline and acknowledge metadata
+receipt using separate signed, mTLS-protected requests. These do not dispatch
+work, send code, attach Governor permits, or grant execution authority.
+See [Mesh Lease Exchange](MESH_LEASE_EXCHANGE.md).

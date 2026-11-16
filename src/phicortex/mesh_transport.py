@@ -19,9 +19,13 @@ import sqlite3
 import ssl
 import time
 
-from .mesh import MeshError, NodeRegistry, MAX_PACKET_BYTES, canonical
+from .mesh import (MeshError, NodeRegistry, MAX_PACKET_BYTES, canonical,
+                   _read_key, next_sequence)
+from .lease_exchange import LeaseExchange, ExchangeError, sign_exchange
 
 PATH = "/mesh/v1/heartbeats"
+PREVIEW_PATH = "/mesh/v1/leases/preview"
+ACK_PATH = "/mesh/v1/leases/ack"
 MAX_REPLY_BYTES = 8192
 RFC1918 = (
     ipaddress.ip_network("10.0.0.0/8"),
@@ -133,7 +137,7 @@ def client_context(server_ca: Path, client_cert: Path, client_key: Path) -> ssl.
     return ctx
 
 
-def handler_factory(nodes: NodeRegistry):
+def handler_factory(nodes: NodeRegistry, exchange: LeaseExchange | None = None):
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.0"
 
@@ -156,7 +160,7 @@ def handler_factory(nodes: NodeRegistry):
             self.answer(404, {"error": "no read-only remote API"})
 
         def do_POST(self):
-            if self.path != PATH:
+            if self.path not in (PATH, PREVIEW_PATH, ACK_PATH):
                 self.answer(404, {"error": "unknown endpoint"})
                 return
             lengths = self.headers.get_all("Content-Length", [])
@@ -177,18 +181,25 @@ def handler_factory(nodes: NodeRegistry):
                 return
             try:
                 data = json.loads(self.rfile.read(size).decode("utf-8"))
-                result = nodes.accept(
-                    data, tls_peer_sha256=hashlib.sha256(cert).hexdigest())
+                peer_pin = hashlib.sha256(cert).hexdigest()
+                if self.path == PATH:
+                    result = nodes.accept(data, tls_peer_sha256=peer_pin)
+                    response = {
+                        "node_id": result["node_id"], "sequence": result["sequence"],
+                        "status": result["status"], "expires_at": result["expires_at"],
+                        "execution_authorized": False, "task_dispatched": False}
+                else:
+                    if exchange is None:
+                        raise ExchangeError("lease exchange disabled")
+                    action = "preview" if self.path == PREVIEW_PATH else "ack"
+                    response = exchange.apply(data, action=action, tls_peer_sha256=peer_pin)
             except (ValueError, UnicodeError):
                 self.answer(400, {"error": "invalid JSON"})
-            except MeshError:
-                # No node-enumeration details returned to remote peers.
-                self.answer(403, {"error": "heartbeat not authorized"})
+            except (MeshError, ExchangeError):
+                # Avoid node enumeration or leaking lease state on failure.
+                self.answer(403, {"error": "signed request not authorized"})
             else:
-                self.answer(200, {
-                    "node_id": result["node_id"], "sequence": result["sequence"],
-                    "status": result["status"], "expires_at": result["expires_at"],
-                    "execution_authorized": False, "task_dispatched": False})
+                self.answer(200, response)
     return Handler
 
 
@@ -201,7 +212,7 @@ def start_server(nodes: NodeRegistry, ctx: ssl.SSLContext,
                  host: str = "127.0.0.1", port: int = 8766,
                  *, allow_lan: bool = False) -> TransportHTTPServer:
     host = validate_endpoint(host, port, allow_lan=allow_lan, ephemeral=True)
-    server = TransportHTTPServer((host, port), handler_factory(nodes))
+    server = TransportHTTPServer((host, port), handler_factory(nodes, LeaseExchange(nodes.database)))
     try:
         server.socket = ctx.wrap_socket(server.socket, server_side=True)
     except BaseException:
@@ -240,9 +251,46 @@ def send_heartbeat(host: str, port: int, packet: dict,
         conn.close()
 
 
+def send_lease_request(host: str, port: int, packet: dict, action: str,
+                       ca: Path, cert: Path, key: Path, *,
+                       allow_lan: bool = False) -> dict:
+    """Send a signed, read-only lease preview or metadata acknowledgment."""
+    if action not in ("preview", "ack"):
+        raise TransportError("unknown lease exchange action")
+    host = validate_endpoint(host, port, allow_lan=allow_lan)
+    payload = canonical(packet)
+    if not 1 <= len(payload) <= MAX_PACKET_BYTES:
+        raise TransportError("lease request exceeds packet limit")
+    path = PREVIEW_PATH if action == "preview" else ACK_PATH
+    ctx = client_context(ca, cert, key)
+    conn = HTTPSConnection(host, port, context=ctx, timeout=5)
+    try:
+        conn.request("POST", path, body=payload,
+                     headers={"Content-Type": "application/json",
+                              "Content-Length": str(len(payload))})
+        reply = conn.getresponse()
+        data = reply.read(MAX_REPLY_BYTES + 1)
+        if len(data) > MAX_REPLY_BYTES:
+            raise TransportError("lease exchange response too large")
+        if reply.status != 200:
+            raise TransportError(f"lease exchange refused (HTTP {reply.status})")
+        answer = json.loads(data.decode("utf-8"))
+        if (not isinstance(answer, dict) or answer.get("action") != action or
+                answer.get("execution_authorized") is not False or
+                answer.get("task_dispatched") is not False or
+                answer.get("governor_permit_included") is not False or
+                answer.get("task_payload_included") is not False):
+            raise TransportError("coordinator response violated metadata-only contract")
+        return answer
+    except (OSError, ssl.SSLError, UnicodeError, ValueError) as exc:
+        raise TransportError("secure lease exchange failed") from exc
+    finally:
+        conn.close()
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(
-        description="Opt-in mutually authenticated TLS transport for signed heartbeats only")
+        description="Opt-in mTLS heartbeat and metadata-only lease exchange; no execution")
     commands = parser.add_subparsers(dest="action", required=True)
     bind = commands.add_parser("bind-client-cert", help="trusted local operator action")
     bind.add_argument("--db", type=Path, required=True)
@@ -264,6 +312,18 @@ def main(argv=None) -> int:
     send.add_argument("--cert", type=Path, required=True)
     send.add_argument("--key", type=Path, required=True)
     send.add_argument("--allow-lan", action="store_true")
+    for action in ("preview", "ack"):
+        lease = commands.add_parser(action, help="signed mTLS lease metadata only")
+        lease.add_argument("--host", required=True)
+        lease.add_argument("--port", type=int, default=8766)
+        lease.add_argument("--node-id", required=True)
+        lease.add_argument("--signing-key", type=Path, required=True)
+        lease.add_argument("--counter-db", type=Path, required=True)
+        lease.add_argument("--lease-id", required=(action == "ack"))
+        lease.add_argument("--ca", type=Path, required=True)
+        lease.add_argument("--cert", type=Path, required=True)
+        lease.add_argument("--key", type=Path, required=True)
+        lease.add_argument("--allow-lan", action="store_true")
     args = parser.parse_args(argv)
     try:
         if args.action == "bind-client-cert":
@@ -283,6 +343,15 @@ def main(argv=None) -> int:
                 pass
             finally:
                 server.server_close()
+        elif args.action in ("preview", "ack"):
+            number = next_sequence(args.counter_db, args.node_id)
+            packet = sign_exchange(
+                args.node_id, number, _read_key(args.signing_key, private=True),
+                args.action, lease_id=args.lease_id)
+            result = send_lease_request(
+                args.host, args.port, packet, args.action,
+                args.ca, args.cert, args.key, allow_lan=args.allow_lan)
+            print(json.dumps(result, indent=2, sort_keys=True))
         else:
             if args.packet.stat().st_size > MAX_PACKET_BYTES:
                 raise TransportError("packet file too large")
@@ -292,7 +361,7 @@ def main(argv=None) -> int:
                                     allow_lan=args.allow_lan)
             print(json.dumps(result, indent=2, sort_keys=True))
         return 0
-    except (TransportError, MeshError, OSError, ValueError, ssl.SSLError) as exc:
+    except (TransportError, MeshError, ExchangeError, OSError, ValueError, ssl.SSLError) as exc:
         parser.exit(2, f"refused: {exc}\n")
 
 
