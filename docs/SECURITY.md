@@ -153,3 +153,16 @@ execution. It does not change the guarded worker or introduce a remote
 command endpoint. The snapshot remains mutable to privileged host
 processes, and SQLite is not a secure hardware attestation service.
 See [Signed Task Envelopes](SIGNED_TASK_ENVELOPES.md).
+
+
+## Two-PC validation diagnostic
+
+Local certificate preflight does not prove server identity; the real TLS
+handshake checks its trust chain and IP SAN. Operator-recorded public-key
+and certificate fingerprints prevent accidentally testing the wrong enrolled
+worker. A denial test counts only an explicit HTTP 403; a disconnect or TLS
+error is never counted as successful revocation proof. Even an HTTP 403
+requires operator-side correlation to establish the cause. Reports exclude
+raw secrets and private credential paths but contain operational identifiers.
+No auto-retry, job dispatch, Governor permit delivery or code execution is
+added. See [Two-PC validation](TWO_PC_MESH_VALIDATION.md).

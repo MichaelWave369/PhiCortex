@@ -178,3 +178,13 @@ This record is separately operator-signed and limited to the remaining
 permit/lease/heartbeat lifetime. Verification is **read-only** and never
 consumes the permit or submits work to the guarded worker. See
 [Signed Task Envelopes](SIGNED_TASK_ENVELOPES.md).
+
+
+## Mesh diagnostic (candidate)
+
+The human-invoked mesh_doctor CLI reuses the existing signed heartbeat and
+lease-preview mTLS client, validates the local TLS/Ed25519 credentials against
+operator-recorded pins, and advances the shared durable node sequence before
+any send attempt. The optional acknowledgment and denial probe remain explicit.
+Diagnostics cannot prove actual two-PC deployment or sandbox isolation.
+See [Two-PC validation](TWO_PC_MESH_VALIDATION.md).
