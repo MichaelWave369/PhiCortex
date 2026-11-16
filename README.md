@@ -210,3 +210,14 @@ ready node may inspect its own manually leased task ID, mode, hash and
 deadline and acknowledge receipt with its enrolled Ed25519 identity and
 TLS certificate. This is **not** task dispatch, code delivery, execution
 permission or a Governor permit. [Setup and limitations](docs/MESH_LEASE_EXCHANGE.md).
+
+
+## Signed Task Envelopes (Phase 4 candidate)
+
+The optional operator CLI `python -m phicortex.envelope` signs and validates
+a short-lived, worker-specific **cross-reference** between an Ed25519
+Governor permit, the exact reviewed snapshot, a manually assigned durable
+lease, the enrolled node's public key and TLS certificate pin, and its signed
+receipt. The envelope does **not** contain executable work or authorize
+execution. The guarded worker, chat API and mTLS endpoints are unchanged.
+See [Signed Task Envelopes](docs/SIGNED_TASK_ENVELOPES.md).

@@ -139,3 +139,17 @@ The shared heartbeat/lease sequence counter denies replay, and an expired,
 drained or revoked node cannot retrieve a live lease. Manual operator
 reconciliation is still required for uncertain expired leases.
 See [Mesh Lease Exchange](MESH_LEASE_EXCHANGE.md).
+
+
+## Signed Envelope Binding (candidate)
+
+A local operator may issue a separate Ed25519-signed envelope that
+cross-validates an existing signed Governor permit, snapshot digest,
+task/lease UUID, enrolled Ed25519 node identity, pinned TLS client
+certificate and acknowledged lease. Its expiry never exceeds the permit,
+lease or heartbeat deadline. This check **does not consume** the Governor
+permit and cannot grant execution permission or establish exactly-once
+execution. It does not change the guarded worker or introduce a remote
+command endpoint. The snapshot remains mutable to privileged host
+processes, and SQLite is not a secure hardware attestation service.
+See [Signed Task Envelopes](SIGNED_TASK_ENVELOPES.md).
