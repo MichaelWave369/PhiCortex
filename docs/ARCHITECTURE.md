@@ -155,3 +155,14 @@ atomic SQLite transaction. The server exposes no task or command endpoint.
 Remote worker execution, encrypted lease exchange, artifact transfers and
 actual multi-PC integration remain separate milestones.
 See [Mesh Transport](MESH_TRANSPORT.md).
+
+
+## Authenticated Metadata-Only Lease Exchange
+
+The mesh mTLS listener can now return one active, manually assigned lease's
+non-executable metadata to its matching enrolled, ready node and persist
+a signed receipt acknowledgment. The request body binds its action to the
+node Ed25519 identity and the same replay-safe sequence as heartbeats.
+Certificate pin, enrollment, lease status and acknowledgment are verified
+atomically in SQLite. No executable payloads or source paths are transmitted.
+See [Mesh Lease Exchange](MESH_LEASE_EXCHANGE.md).

@@ -124,3 +124,18 @@ The TLS heartbeat channel authenticates node communication but does not
 authorize a worker to run code, prove the host is uncompromised or prove
 gVisor isolation. Do not expose it to the public Internet. See
 [Mesh Transport](MESH_TRANSPORT.md).
+
+
+## Mesh Lease Metadata Exchange Boundary
+
+A successful mTLS, certificate-pinned, Ed25519-authenticated lease preview
+is not permission to execute code. The two new endpoints transfer only
+manually leased task identifiers, mode, hash, deadline and acknowledgment
+state. Worker private keys, Governor permits, source snapshots, shell
+commands and code payloads never cross these endpoints. A signed
+acknowledgment proves receipt by enrolled key holders, not task execution,
+node honesty or gVisor isolation. No new task is allocated by remote calls.
+The shared heartbeat/lease sequence counter denies replay, and an expired,
+drained or revoked node cannot retrieve a live lease. Manual operator
+reconciliation is still required for uncertain expired leases.
+See [Mesh Lease Exchange](MESH_LEASE_EXCHANGE.md).
