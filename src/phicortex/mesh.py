@@ -170,8 +170,14 @@ class NodeRegistry:
         return {"node_id": node_id, "label": label, "public_key_sha256": fingerprint,
                 "approved_modes": sorted(approved_modes), "status": "enrolled"}
 
-    def accept(self, packet: dict, *, now: int | None = None) -> dict:
-        """Verify enrolled key, timestamp and atomic monotonic sequence."""
+    def accept(self, packet: dict, *, now: int | None = None,
+               tls_peer_sha256: str | None = None) -> dict:
+        """Verify enrolled key, timestamp and atomic monotonic sequence.
+
+        When a TLS peer fingerprint is supplied, require its explicit
+        operator-created binding to the same enrolled node, in this very
+        transaction. Offline operator packet imports remain supported.
+        """
         when = int(time.time()) if now is None else now
         if type(when) is not int:
             raise MeshError("server timestamp must be integer")
@@ -186,6 +192,14 @@ class NodeRegistry:
                                   (node_id,)).fetchone()
                 if node is None or node["revoked"]:
                     raise MeshError("worker is not enrolled or has been revoked")
+                if tls_peer_sha256 is not None:
+                    if (not isinstance(tls_peer_sha256, str) or
+                            not re.fullmatch(r"[0-9a-f]{64}", tls_peer_sha256)):
+                        raise MeshError("invalid TLS certificate fingerprint")
+                    pin = db.execute("""SELECT certificate_sha256 FROM node_tls_pins
+                                        WHERE node_id=?""", (node_id,)).fetchone()
+                    if pin is None or pin["certificate_sha256"] != tls_peer_sha256:
+                        raise MeshError("TLS certificate is not bound to this enrolled worker")
                 try:
                     Public.from_public_bytes(node["pubkey"]).verify(signature, canonical(body))
                 except (Invalid, ValueError) as exc:

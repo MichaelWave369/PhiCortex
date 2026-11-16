@@ -142,3 +142,16 @@ owner, lease ID and independently checked artifact-vault SHA-256.
 Expired, revoked, inconclusive and disconnected work goes to human review,
 never automatic retry. The mesh remains offline and no worker receives
 tasks through the API. See [Lease Recovery](LEASES.md).
+
+
+## Live mTLS Heartbeat Transport (candidate)
+
+`phicortex.mesh_transport` adds a TLS 1.3 listener for signed heartbeat
+**only**. Mutual certificate authentication and an explicit local binding
+of TLS client certificate SHA-256 to a registered Ed25519 node UUID ensure
+TLS and heartbeat identities refer to the same enrolled node. Binding,
+revocation, signature and replay checks execute under the registry's
+atomic SQLite transaction. The server exposes no task or command endpoint.
+Remote worker execution, encrypted lease exchange, artifact transfers and
+actual multi-PC integration remain separate milestones.
+See [Mesh Transport](MESH_TRANSPORT.md).

@@ -104,7 +104,7 @@ operator-approved recovery mechanism; resetting its counter is rejected.
 
 ## Security and operational limitations
 
-- **No networking, TLS, mTLS, A2A, remote node service or discovery** is enabled.
+- **The original enrollment CLI remains offline and does not do discovery or task dispatch.** A separate opt-in heartbeat-only mutual TLS transport is introduced in [Mesh Transport](MESH_TRANSPORT.md).
   Packet import is manual. The coordinator does not automatically send tasks.
 - A heartbeat authenticates a registered key, not an independently identified
   physical machine; stolen keys can impersonate a node until revoked.
