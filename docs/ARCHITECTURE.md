@@ -166,3 +166,15 @@ node Ed25519 identity and the same replay-safe sequence as heartbeats.
 Certificate pin, enrollment, lease status and acknowledgment are verified
 atomically in SQLite. No executable payloads or source paths are transmitted.
 See [Mesh Lease Exchange](MESH_LEASE_EXCHANGE.md).
+
+
+## Operator-Signed Task Envelope v1 (candidate)
+
+The new `phicortex.envelope` module derives a deterministic approved-task
+digest from an existing Ed25519 Governor permit and reviewed snapshot,
+then binds that to one manually assigned/acknowledged lease, node UUID,
+Ed25519 key fingerprint and operator-pinned TLS client certificate.
+This record is separately operator-signed and limited to the remaining
+permit/lease/heartbeat lifetime. Verification is **read-only** and never
+consumes the permit or submits work to the guarded worker. See
+[Signed Task Envelopes](SIGNED_TASK_ENVELOPES.md).
