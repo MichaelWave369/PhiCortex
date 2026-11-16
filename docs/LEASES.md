@@ -7,12 +7,12 @@ permission to execute code.
 ## What is implemented
 
 - Operator creates an immutable **task intent** with a canonical UUID, an
-  allowlisted mode (\`test\` or \`build-check\`) and a SHA-256 task reference.
+  allowlisted mode (`test` or `build-check`) and a SHA-256 task reference.
   Creating the same ID/spec again is idempotent; changing the spec is denied.
   The task hash is **not** a verified Governor permit.
 - An operator may assign a pending task to one manually enrolled node with
-  an approved mode, fresh signed heartbeat and \`ready\` state. SQLite
-  \`BEGIN IMMEDIATE\` serializes assignment and permits at most one **active
+  an approved mode, fresh signed heartbeat and `ready` state. SQLite
+  `BEGIN IMMEDIATE` serializes assignment and permits at most one **active
   lease per node**. Leases expire no later than the most recent heartbeat.
 - The lease records its node ID, generated lease UUID, and deadline.
   **This never dispatches work** and never substitutes for the independent
@@ -22,10 +22,10 @@ permission to execute code.
   The coordinator checks exact task ownership, deadline, current enrollment
   and liveness, node signature, manifest integrity, manifest SHA-256, and
   the result's agreement with the archived worker report.
-- An accepted \`passed\` or \`failed\` result marks the task \`completed\`
-  **with its actual outcome recorded**. An \`inconclusive\` report is sent
-  to \`review_required\`; an expired/revoked/offline lease also transitions
-  to \`review_required\` on explicit reconciliation.
+- An accepted `passed` or `failed` result marks the task `completed`
+  **with its actual outcome recorded**. An `inconclusive` report is sent
+  to `review_required`; an expired/revoked/offline lease also transitions
+  to `review_required` on explicit reconciliation.
 - **No automatic retry, no automatic requeue, no silent reassignment.**
   An operator must explicitly close a review-required task. To rerun a
   reviewed task, create a **new task UUID** and obtain a fresh Governor
@@ -34,13 +34,13 @@ permission to execute code.
   leased. SQLite also stores task transition events for inspection.
 
 The task table lives in the **same SQLite file** as
-\`phicortex.mesh.NodeRegistry\` so node status and lease transitions can be
+`phicortex.mesh.NodeRegistry` so node status and lease transitions can be
 checked atomically. Close/read operations explicitly release connections
 on both Windows and Linux.
 
 ## State machine
 
-\`\`\`mermaid
+```mermaid
 stateDiagram-v2
     [*] --> pending
     pending --> leased: operator assigns to ready enrolled node
@@ -51,31 +51,31 @@ stateDiagram-v2
     completed --> [*]
     closed --> [*]
     cancelled --> [*]
-\`\`\`
+```
 
 A lease is a **coordination record**, not an executable instruction. The
-\`execution_authorized\` and \`task_dispatched\` fields are always \`false\`.
+`execution_authorized` and `task_dispatched` fields are always `false`.
 
 ## Example: Offline local bookkeeping
 
 Requires an already enrolled and recently heartbeat-confirmed node from
 [Mesh Enrollment](MESH_ENROLLMENT.md), and a local Python environment with
-\`pip install -r requirements-worker.txt\`. Set \`PYTHONPATH=src\` (on
-PowerShell: \`$env:PYTHONPATH = 'src'\`).
+`pip install -r requirements-worker.txt`. Set `PYTHONPATH=src` (on
+PowerShell: `$env:PYTHONPATH = 'src'`).
 
 The task reference digest should be calculated from a **reviewed task plan**
 by the operator. Do **not** submit an arbitrary LLM-supplied string as proof
 of authorized work. These commands only create ledger records.
 
-\`\`\`bash
+```bash
 python -m phicortex.leases create \
   --db "$HOME/.phicortex/mesh.sqlite3" \
   --mode test --task-sha256 "<real-64-lowercase-hex-digest>"
-\`\`\`
+```
 
-Copy the returned \`task_id\` and use the previously enrolled \`node_id\`.
+Copy the returned `task_id` and use the previously enrolled `node_id`.
 
-\`\`\`bash
+```bash
 python -m phicortex.leases lease \
   --db "$HOME/.phicortex/mesh.sqlite3" \
   --task-id "<task-uuid>" --node-id "<node-uuid>" \
@@ -89,7 +89,7 @@ python -m phicortex.leases reconcile \
 
 python -m phicortex.leases events \
   --db "$HOME/.phicortex/mesh.sqlite3" --task-id "<task-uuid>"
-\`\`\`
+```
 
 A result packet may be generated **after separately authorized, manually
 run** worker testing, using the enrolled node private key and the local
@@ -97,7 +97,7 @@ artifact vault's manifest. This signs only a **claim**, not proof of
 execution or hardware isolation. The same evidence manifest needs to be
 available to the trusted coordinator.
 
-\`\`\`bash
+```bash
 python -m phicortex.leases sign-result \
   --task-id "<task-uuid>" --lease-id "<lease-uuid>" \
   --node-id "<node-uuid>" \
@@ -111,22 +111,22 @@ python -m phicortex.leases complete \
   --packet "$HOME/.phicortex/results/result-001.json" \
   --vault "$HOME/.phicortex/vault" \
   --manifest "$HOME/.phicortex/vault/manifests/<manifest-id>.json"
-\`\`\`
+```
 
-The worker's archived status must match \`passed\` or \`failed\`; unusual
-statuses such as \`cleanup_unverified\` must be reported as \`inconclusive\`.
+The worker's archived status must match `passed` or `failed`; unusual
+statuses such as `cleanup_unverified` must be reported as `inconclusive`.
 If the result is late or signature/evidence verification fails, the ledger
 cannot record success.
 
-If \`reconcile\` marks a task \`review_required\`, the operator can close it
+If `reconcile` marks a task `review_required`, the operator can close it
 after checking external effects and recorded evidence:
 
-\`\`\`bash
+```bash
 python -m phicortex.leases close \
   --db "$HOME/.phicortex/mesh.sqlite3" \
   --task-id "<task-uuid>" \
   --reason "Reviewed independent worker evidence; no automatic retry"
-\`\`\`
+```
 
 No auto requeue exists, even when a heartbeat expires or a process restarts.
 
