@@ -147,3 +147,19 @@ or start jobs.
 
 See [Governor and evidence vault](docs/GOVERNOR_AND_VAULT.md) for a
 safe operator walkthrough, limits and the separation still needed.
+
+
+## Asymmetric approvals and staged snapshots (PR candidate)
+
+The experimental BUILD-check/TEST CLI now defaults to a **public-key verification**
+contract: an operator signs a reviewed, staged source snapshot with an Ed25519
+private key; the worker validates using the corresponding public key only.
+Old shared-secret HMAC permits are **not accepted by the operator CLI**. They
+remain supported by low-level code only with an explicit migration/test opt-in.
+
+The local gateway still needs no external Python packages. For the optional
+signer/worker tools, install `pip install -r requirements-worker.txt`.
+
+Read [Asymmetric approvals and snapshots](docs/ASYMMETRIC_APPROVALS.md) for the
+Linux workflow and limitations. **Do not treat filesystem permissions as real
+immutability or allow untrusted model code until physical containment tests pass.**

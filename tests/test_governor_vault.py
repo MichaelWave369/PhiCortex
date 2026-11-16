@@ -96,12 +96,12 @@ class GovernanceTests(unittest.TestCase):
         cleaned = mock.Mock(return_value=subprocess.CompletedProcess([], 0, "", ""))
         with mock.patch("phicortex.worker.platform.system", return_value="Linux"):
             result = execute(self.job, permit=grant, key=self.key, replay_db=self.ledger,
-                             guard=lambda: None, launch=launched, cleanup=cleaned)
+                             allow_legacy_hmac=True, guard=lambda: None, launch=launched, cleanup=cleaned)
             self.assertEqual(result["status"], "passed")
             self.assertEqual(launched.call_count, 1)
             with self.assertRaisesRegex(WorkerError, "replay"):
                 execute(self.job, permit=grant, key=self.key, replay_db=self.ledger,
-                        guard=lambda: None, launch=launched, cleanup=cleaned)
+                        allow_legacy_hmac=True, guard=lambda: None, launch=launched, cleanup=cleaned)
         self.assertEqual(launched.call_count, 1)
 
 
@@ -115,7 +115,7 @@ class GovernanceTests(unittest.TestCase):
             [], 2, "", "permission denied"))
         with mock.patch("phicortex.worker.platform.system", return_value="Linux"):
             result = execute(self.job, permit=grant, key=self.key, replay_db=self.ledger,
-                             guard=lambda: None, launch=lambda *a, **k: process,
+                             allow_legacy_hmac=True, guard=lambda: None, launch=lambda *a, **k: process,
                              cleanup=bad_cleanup)
         self.assertEqual(result["status"], "cleanup_unverified")
         self.assertEqual(bad_cleanup.call_count, 1)
