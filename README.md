@@ -221,3 +221,13 @@ lease, the enrolled node's public key and TLS certificate pin, and its signed
 receipt. The envelope does **not** contain executable work or authorize
 execution. The guarded worker, chat API and mTLS endpoints are unchanged.
 See [Signed Task Envelopes](docs/SIGNED_TASK_ENVELOPES.md).
+
+
+## Two-PC mesh diagnostic (candidate)
+
+Optional operator CLI: python -m phicortex.mesh_doctor. This checks local
+client certificate and enrolled node-key fingerprints before making a real
+mutually authenticated TLS 1.3 heartbeat and read-only lease preview. It
+can explicitly acknowledge lease metadata or test a revocation HTTP 403,
+and saves redacted, non-overwriting reports. No source transfer, remote
+execution or task dispatch is enabled. See [Two-PC validation](docs/TWO_PC_MESH_VALIDATION.md).
