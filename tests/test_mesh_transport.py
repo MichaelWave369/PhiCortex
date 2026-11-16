@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import http.client
 import sqlite3
+from contextlib import closing
 import json
 import ipaddress
 from pathlib import Path
@@ -378,17 +379,19 @@ class TransportIntegrationTests(unittest.TestCase):
 
     def test_expired_heartbeat_refuses_lease_metadata(self):
         self.assign_lease()
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db:
             db.execute("UPDATE nodes SET expires_at=? WHERE id=?",
                        (int(time.time()) - 1, self.node_id))
+            db.commit()
         with self.assertRaisesRegex(TransportError, "403"):
             self.lease_request(2)
 
     def test_expired_lease_cannot_be_acked_or_previews_as_active(self):
         task = self.assign_lease()
-        with sqlite3.connect(self.database) as db:
+        with closing(sqlite3.connect(self.database)) as db:
             db.execute("UPDATE task_leases SET deadline=? WHERE task_id=?",
                        (int(time.time()) - 1, task["task_id"]))
+            db.commit()
         self.assertIsNone(self.lease_request(2)["lease"])
         with self.assertRaisesRegex(TransportError, "403"):
             self.lease_request(3, action="ack", lease_id=task["lease_id"])
