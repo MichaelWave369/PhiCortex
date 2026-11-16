@@ -31,7 +31,7 @@ class WorkerPlanTests(unittest.TestCase):
                      "--user=65534:65534", "--pids-limit=64", "--memory=512m",
                      "--cpus=1"):
             self.assertIn(flag, cmd)
-        self.assertIn("source=" + str(self.workspace.resolve()) + ",target=/workspace,readonly", cmd)
+        self.assertIn("--mount=type=bind,source=" + str(self.workspace.resolve()) + ",target=/workspace,readonly", cmd)
         self.assertEqual(cmd[-8:], ["python", "-B", "-m", "unittest", "discover", "-s", "tests", "-v"])
 
     def test_build_check_is_syntax_only_and_does_not_run_shell(self):
