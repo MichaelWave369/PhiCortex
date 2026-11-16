@@ -7,7 +7,7 @@ deployment. Operator must separately configure a small, private lab PKI.
 ## What communicates
 
 The coordinator listens on **127.0.0.1:8766 by default**, and exposes **one**
-endpoint: \`POST /mesh/v1/heartbeats\`. All other paths return 404. The
+endpoint: `POST /mesh/v1/heartbeats`. All other paths return 404. The
 coordinator never accepts executable commands, files, tasks, scripts, Governor
 permits or arbitrary tools over this listener.
 
@@ -29,18 +29,18 @@ The coordinator then verifies all of these:
    revocation and duplicate sequence claims.
 
 The response includes only node UUID, reported online/draining status, receipt
-expiry and sequence plus explicit \`execution_authorized=false\` and
-\`task_dispatched=false\`.
+expiry and sequence plus explicit `execution_authorized=false` and
+`task_dispatched=false`.
 
 ## Provisioning prerequisites
 
 The operator must control an isolated lab CA and obtain:
-- \`ca.crt\`: public CA certificate that signs coordinator and node TLS certs
-- \`coordinator.crt\` and \`coordinator.key\`: TLS server identity
-- \`node01.crt\` and \`node01.key\`: separate TLS client identity
-- Existing node **Ed25519** identity keypair from \`phicortex.mesh new-keys\`
+- `ca.crt`: public CA certificate that signs coordinator and node TLS certs
+- `coordinator.crt` and `coordinator.key`: TLS server identity
+- `node01.crt` and `node01.key`: separate TLS client identity
+- Existing node **Ed25519** identity keypair from `phicortex.mesh new-keys`
 
-The server certificate must have an \`iPAddress\` SAN that exactly matches the
+The server certificate must have an `iPAddress` SAN that exactly matches the
 coordinator's numeric IPv4 address used by clients, plus serverAuth extended
 key usage. The node TLS certificate should carry clientAuth extended key usage.
 Use short-lived certs and protect all private keys outside Git repositories,
@@ -49,7 +49,7 @@ or the enrolled Ed25519 heartbeat signing key for TLS identity.
 
 CA private key stays offline. The client private key stays on the worker.
 The server private key stays on the coordinator. Never push any private key
-or \`*.key\` file to GitHub. A new compromised client certificate requires
+or `*.key` file to GitHub. A new compromised client certificate requires
 revoking the node and enrolling a new UUID/keypair and certificate binding.
 
 The operator must verify cert origin and node identity *out of band*. A cert
@@ -93,7 +93,7 @@ python -m phicortex.mesh_transport serve \
 ~~~
 
 A dedicated Linux test coordinator on a local RFC1918 address could explicitly
-opt in to LAN binding with e.g. \`--listen 192.168.1.50 --allow-lan\`.
+opt in to LAN binding with e.g. `--listen 192.168.1.50 --allow-lan`.
 **Wildcard, public, DNS-name and IPv6 listener addresses are refused.**
 Server certificates must include that exact private IP as a SAN. Use an OS
 firewall to restrict port 8766 to known worker IPs. Avoid forwarding this port
@@ -124,8 +124,8 @@ python -m phicortex.mesh_transport send \
   --key "$HOME/.phicortex/credentials/node01.key"
 ~~~
 
-For an approved RFC1918 LAN server, supply its numeric IP in \`--host\` and
-pass \`--allow-lan\`; the server cert SAN must match. Unlike the old offline
+For an approved RFC1918 LAN server, supply its numeric IP in `--host` and
+pass `--allow-lan`; the server cert SAN must match. Unlike the old offline
 packet import, this **does** make an HTTPS network connection, but it
 does not call or modify the model chat gateway and does not transmit tasks.
 
