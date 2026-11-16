@@ -166,3 +166,16 @@ requires operator-side correlation to establish the cause. Reports exclude
 raw secrets and private credential paths but contain operational identifiers.
 No auto-retry, job dispatch, Governor permit delivery or code execution is
 added. See [Two-PC validation](TWO_PC_MESH_VALIDATION.md).
+
+
+## Offline lab certificate authority (candidate)
+
+The helper intentionally issues only short-lived, narrow serverAuth or clientAuth
+certificates with exact private IP or node UUID identities. Signing a worker
+CSR requires a trusted operator to verify the request's origin and node ID;
+certificate-signing private keys remain offline from the worker. Certificates
+are not production hardened, keys are currently unencrypted PKCS#8 PEMs,
+Windows NTFS ACLs require operator inspection and there is no online CRL,
+OCSP or automated rotation. Never put the CA private key, node TLS key or
+Ed25519 signing key into the repository, the model context or cloud storage.
+See [Lab PKI](LAB_PKI.md).
