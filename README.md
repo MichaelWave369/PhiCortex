@@ -241,3 +241,18 @@ X.509 certificates signed only after the operator verifies the CSR identity.
 The CA private key remains on the operator PC and the worker's TLS private key
 remains on the worker PC. No network CA, auto enrollment, task dispatch or
 remote execution is added. See [Lab PKI](docs/LAB_PKI.md).
+
+
+## LATTICE local modes and versioned project notes (candidate)
+
+The local inference API accepts an optional chat/dream/build/test mode
+that selects an existing registered model role and records the reason in
+the event ledger. These are advisory responses only, not permission to
+run the guarded worker or an automated DREAM loop. Without a mode,
+legacy deterministic routing is unchanged.
+
+An explicit operator CLI, python -m phicortex.project_notes, stores
+versioned plaintext Markdown with project-scoped FTS5 search and exact
+version SHA-256 references. Nothing is exposed over a new API or
+automatically injected into prompts. Setup and limitations:
+[LATTICE foundation](docs/LATTICE_MODES_NOTES.md).
