@@ -95,3 +95,15 @@ blocks network access and refuses unrecognized task plans. This is **not** the
 Governor, distributed mesh, or a proven isolation boundary against hostile code.
 The higher-security execution and artifact/approval contracts remain future work.
 See [Guarded Worker](GUARDED_WORKER.md).
+
+
+## Governor + Artifact Vault prototype (candidate PR)
+
+Operator CLI issues task-scoped HMAC permits with an expiry and snapshot
+digest; the Linux gVisor-gated worker requires and consumes one permit
+before launching a fixed test job. An append-only-in-practice SQLite replay
+ledger refuses duplicate permit IDs. The evidence vault stores result JSON
+and explicit selected source files as SHA-256-addressed blobs with a
+verifiable manifest. The worker API remains unavailable to the LLM.
+These do not constitute a protected independent Governor or an actual
+networked sandbox system. See [Governor + Vault](GOVERNOR_AND_VAULT.md).

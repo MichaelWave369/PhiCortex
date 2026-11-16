@@ -36,3 +36,25 @@ execution unless separately opted in. It is not exposed through the HTTP API.
 No adversarial host-containment testing has been performed; use a reviewed,
 dedicated Linux worker before running truly untrusted code. No secrets in
 workspaces. See [guarded worker design](GUARDED_WORKER.md).
+
+
+## Operator permit + evidence vault prototype
+
+The worker CLI requires an explicit HMAC-signed approval from an operator-owned
+32-byte secret file, with at most a 300-second validity window, exact task
+scoping and SHA-256 validation of the source workspace. Consumed permit IDs
+are recorded in SQLite and cannot be replayed. The key, replay ledger, permit
+and vault must remain outside the mounted workspace. No approval endpoint
+exists in the local browser or model API.
+
+This is **not** a separately privileged Governor process: the local trusted
+worker must possess the verification key, and compromise of that process or
+its OS account remains in scope. A SHA-256 workspace digest is not an
+immutable filesystem snapshot; concurrent host-side file mutation remains
+a threat. The artifact vault provides integrity checks, not signed,
+tamper-evident audit records or backup protection. The Docker daemon itself
+remains privileged and gVisor was not independently containment-tested here.
+
+Do not use for hostile/unreviewed code or remote API execution. Keep the
+signing key protected, the host fully updated, and test gVisor isolation on
+a dedicated Linux machine before expanding capabilities.

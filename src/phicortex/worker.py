@@ -16,6 +16,8 @@ import subprocess
 import tempfile
 import time
 from uuid import uuid4
+from .governor import verify_and_consume, load_key, GovernorError
+from .vault import Vault, VaultError
 
 IMAGE_RE = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._/:\-]*@sha256:[0-9a-f]{64}$")
 MAX_OUTPUT_BYTES = 64 * 1024
@@ -125,7 +127,8 @@ def require_runsc() -> None:
         raise WorkerError("gVisor runsc is not registered; refusing host execution")
 
 
-def execute(job: dict, *, guard=require_runsc,
+def execute(job: dict, *, permit: dict | None = None, key: bytes | None = None,
+            replay_db: Path | None = None, guard=require_runsc,
             launch=subprocess.Popen, cleanup=subprocess.run) -> dict:
     """Run with bounded output and forced cleanup, after runtime verification.
 
@@ -146,10 +149,23 @@ def execute(job: dict, *, guard=require_runsc,
     except (KeyError, TypeError, ValueError) as exc:
         raise WorkerError("invalid job contract") from exc
     canonical["argv"][canonical["argv"].index("--name") + 1] = name
-    if job["argv"] != canonical["argv"]:
-        raise WorkerError("modified execution command refused")
-    cmd = canonical["argv"]
+    canonical["container_name"] = name
+    if job != canonical:
+        raise WorkerError("modified execution contract refused")
+    if permit is None or key is None or replay_db is None:
+        raise WorkerError("operator permit, key and replay ledger required")
+    workspace = Path(job["workspace"])
+    for sensitive in (replay_db,):
+        selected = Path(sensitive).expanduser().resolve()
+        if selected == workspace or workspace in selected.parents:
+            raise WorkerError("replay ledger must remain outside the mounted workspace")
+    # Preflight before consuming an approval; allow no host execution fallback.
     guard()
+    try:
+        verify_and_consume(permit, job, key, replay_db)
+    except GovernorError as exc:
+        raise WorkerError("governor refused job: " + str(exc)) from exc
+    cmd = canonical["argv"]
     start = time.monotonic()
     status, code, output = "failed", None, ""
     name = job["container_name"]
@@ -163,7 +179,7 @@ def execute(job: dict, *, guard=require_runsc,
                         status = "timed_out"
                         proc.kill()
                         break
-                    if log.tell() > MAX_OUTPUT_BYTES:
+                    if os.fstat(log.fileno()).st_size > MAX_OUTPUT_BYTES:
                         status = "output_limit"
                         proc.kill()
                         break
@@ -184,8 +200,15 @@ def execute(job: dict, *, guard=require_runsc,
         # Kill a container that might survive a disconnected Docker client.
         # Fixed, validated name only. Never run shell commands.
         try:
-            cleanup(["docker", "rm", "-f", name], capture_output=True,
-                    text=True, timeout=8, env=_docker_env(), check=False)
+            cleanup_result = cleanup(["docker", "rm", "-f", name], capture_output=True,
+                                     text=True, timeout=8, env=_docker_env(), check=False)
+            # --rm may have already removed a successfully exited container.
+            # Other nonzero responses must not be reported as a clean pass.
+            cleanup_code = getattr(cleanup_result, "returncode", None)
+            stderr = getattr(cleanup_result, "stderr", "")
+            if cleanup_code not in (0, 1) or (cleanup_code == 1 and (
+                    not isinstance(stderr, str) or "No such container" not in stderr)):
+                status = "cleanup_unverified"
         except (OSError, subprocess.SubprocessError):
             # Report cleanup uncertainty rather than claiming containment.
             status = "cleanup_unverified"
@@ -210,6 +233,11 @@ def main(argv=None) -> int:
     parser.add_argument("--seconds", type=int, default=30)
     parser.add_argument("--out", type=Path, required=True, help="report path outside workspace")
     parser.add_argument("--execute", action="store_true", help="opt-in execution")
+    parser.add_argument("--permit-file", type=Path, help="signed operator approval outside workspace")
+    parser.add_argument("--key-file", type=Path, help="owner-only 32-byte governor key")
+    parser.add_argument("--replay-db", type=Path, help="durable single-use approval ledger")
+    parser.add_argument("--vault", type=Path, help="evidence vault directory outside workspace")
+    parser.add_argument("--include", action="append", default=[], help="explicit workspace-relative evidence file")
     args = parser.parse_args(argv)
     try:
         job = plan(args.mode, args.workspace_root, args.workspace, args.image,
@@ -220,7 +248,19 @@ def main(argv=None) -> int:
         if args.execute:
             if os.environ.get("PHICORTEX_ALLOW_ISOLATED_JOBS") != "1":
                 raise WorkerError("set PHICORTEX_ALLOW_ISOLATED_JOBS=1 to opt in")
-            report = execute(job)
+            if not all((args.permit_file, args.key_file, args.replay_db, args.vault)):
+                raise WorkerError("--permit-file, --key-file, --replay-db and --vault are required")
+            # No approvals, private keys, replay databases or vaults in mounted source.
+            for sensitive in (args.permit_file, args.key_file, args.replay_db, args.vault):
+                selected = sensitive.expanduser().resolve()
+                if selected == Path(job["workspace"]) or Path(job["workspace"]) in selected.parents:
+                    raise WorkerError("security credentials and evidence must stay outside workspace")
+            try:
+                permit = json.loads(args.permit_file.read_text(encoding="utf-8"))
+                key = load_key(args.key_file)
+            except (OSError, ValueError, GovernorError) as exc:
+                raise WorkerError("could not load operator grant") from exc
+            report = execute(job, permit=permit, key=key, replay_db=args.replay_db)
         else:
             report = {k: v for k, v in job.items() if k != "argv"}
             report["status"] = "dry_run_only"
@@ -228,9 +268,18 @@ def main(argv=None) -> int:
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(json.dumps(report, sort_keys=True, indent=2) + "\n",
                                encoding="utf-8")
+        if args.execute:
+            try:
+                vault = Vault(args.vault)
+                manifest = vault.archive(report, workspace=Path(job["workspace"]), include=args.include)
+                if not vault.verify(manifest):
+                    raise VaultError("evidence verification unsuccessful")
+                print(f"Evidence manifest: {manifest}")
+            except VaultError as exc:
+                raise WorkerError("evidence archive failed: " + str(exc)) from exc
         print(f"{report['status']}: {report_path}")
         return 0 if report["status"] in ("passed", "dry_run_only") else 1
-    except WorkerError as exc:
+    except (WorkerError, OSError, ValueError) as exc:
         parser.exit(2, f"refused: {exc}\n")
 
 
