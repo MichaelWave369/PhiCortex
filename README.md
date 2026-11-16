@@ -176,3 +176,13 @@ remote task dispatch, automatic work leases, or a new code-execution path.
 The optional `cryptography` package from `requirements-worker.txt` is needed
 for identity tools; ordinary chat remains independent. See the
 [Mesh Enrollment Guide](docs/MESH_ENROLLMENT.md) for an offline walkthrough.
+
+
+## Durable Task Leases and Manual Recovery (Phase 4 candidate)
+
+The optional offline operator CLI `python -m phicortex.leases` records task
+ownership, bounded deadlines, signed node completion claims and verified
+artifact-vault evidence. An expired or disconnected task becomes
+**review_required**, never automatically requeued. It uses the same SQLite
+database as the signed node registry and does **not** implement task transport,
+remote execution or execution authority. See [Lease Recovery](docs/LEASES.md).

@@ -91,3 +91,20 @@ independent Governor permits; those remain separate trust decisions.
 Keep private node keys outside projects, the registry DB under a trusted
 OS account, and do not transport signed packets over an untrusted channel.
 See [Mesh Enrollment](MESH_ENROLLMENT.md).
+
+
+## Task Lease Coordination Boundary
+
+The experimental lease ledger is a **trusted-local-operator state machine**,
+not a distributed scheduling service and not a new execution grant. It
+authenticates signed result claims from enrolled node public keys and checks
+local artifact hashes. A successful signature is not a proof of physical
+machine identity, correct code execution, or sandbox isolation.
+
+Task deadlines never exceed signed-heartbeat liveness windows; expired
+or revoked work becomes `review_required` rather than silently retried.
+A node may hold only one active lease at a time. The program does **not**
+send commands over the network, enable `/build` or `/test` in chat, or
+bind node identity to a Governor approval. The SQLite event stream is not
+tamper-proof, and artifact files are not immutable while under a shared
+host account. See [Lease Recovery](LEASES.md).
