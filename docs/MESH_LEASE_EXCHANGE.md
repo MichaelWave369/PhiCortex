@@ -9,13 +9,13 @@ end-to-end distributed worker service.
 
 Two new POST routes exist on the **separate mesh listener**:
 
-- \`POST /mesh/v1/leases/preview\` returns the currently leased assignment's
+- `POST /mesh/v1/leases/preview` returns the currently leased assignment's
   task UUID, lease UUID, allowlisted mode, task SHA-256, deadline and whether
   the node previously acknowledged that metadata. When there is no active
-  unexpired assignment, the response's \`lease\` is \`null\`.
-- \`POST /mesh/v1/leases/ack\` records that the worker identity received the
+  unexpired assignment, the response's `lease` is `null`.
+- `POST /mesh/v1/leases/ack` records that the worker identity received the
   matching active lease metadata. This is not a claim that a job was started
-  or completed. Acknowledgment does not change a task from \`leased\` to any
+  or completed. Acknowledgment does not change a task from `leased` to any
   other state; completion remains a **separate** signed evidence process.
 
 Both routes require a **fresh ready heartbeat**, a TLS client certificate
@@ -33,8 +33,8 @@ for the first acknowledgment.
 **There is no task body, code, shell, executable command, workspace path,
 Governor permit, key material or artifact available via these routes.**
 The response explicitly reports
-\`execution_authorized=false\`, \`task_dispatched=false\`,
-\`governor_permit_included=false\` and \`task_payload_included=false\`.
+`execution_authorized=false`, `task_dispatched=false`,
+`governor_permit_included=false` and `task_payload_included=false`.
 
 An acknowledgment is only evidence that a holder of the enrolled identity
 and TLS credentials acknowledged that metadata, not proof of physical
@@ -120,8 +120,8 @@ python -m phicortex.mesh_transport ack \
   --key "$HOME/.phicortex/credentials/node01.key"
 ~~~
 
-For a single-PC experiment, omit \`--allow-lan\` and use
-\`--host 127.0.0.1\` with a loopback-IP SAN on the server certificate.
+For a single-PC experiment, omit `--allow-lan` and use
+`--host 127.0.0.1` with a loopback-IP SAN on the server certificate.
 Use a different certificate/keypair for your real two-PC test.
 
 ## Failure and recovery rules
@@ -134,7 +134,7 @@ Use a different certificate/keypair for your real two-PC test.
   SQLite receipt or the lease; the coordinator never auto-reassigns tasks.
 - A lease whose deadline has passed returns no active preview. Its
   acknowledgment is refused. The trusted coordinator should call
-  \`python -m phicortex.leases reconcile\` so uncertain work goes into
+  `python -m phicortex.leases reconcile` so uncertain work goes into
   **review_required**, never silently requeued.
 - Revoked or drained identities cannot use the new routes.
 - An arbitrary network client cannot enroll nodes, issue Governor permits,
