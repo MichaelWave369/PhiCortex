@@ -273,10 +273,13 @@ def next_sequence(database: Path, node_id: str) -> int:
             raise
 
 
-def _read_key(path: Path) -> bytes:
+def _read_key(path: Path, *, private: bool = False) -> bytes:
     if path.is_symlink():
         raise MeshError("symlinked key refused")
     try:
+        metadata = path.stat()
+        if private and os.name == "posix" and (metadata.st_mode & 0o077):
+            raise MeshError("private node key must not be group/world accessible")
         value = path.read_bytes()
     except OSError as exc:
         raise MeshError("key file unavailable") from exc
@@ -331,13 +334,16 @@ def main(argv=None) -> int:
     args = cli.parse_args(argv)
     try:
         if args.action == "new-keys":
-            from .approval_v1 import create_keypair
-            create_keypair(args.private, args.public)
+            from .approval_v1 import create_keypair, ApprovalError
+            try:
+                create_keypair(args.private, args.public)
+            except ApprovalError as exc:
+                raise MeshError(str(exc)) from exc
             print("Created worker signing key and enrollment public key; protect the private key")
         elif args.action == "heartbeat":
             sequence = (next_sequence(args.counter_db, args.id)
                         if args.counter_db is not None else args.sequence)
-            packet = sign_heartbeat(args.id, sequence, _read_key(args.private), state=args.state)
+            packet = sign_heartbeat(args.id, sequence, _read_key(args.private, private=True), state=args.state)
             _write_exclusive(args.out, canonical(packet) + b"\n")
             print(f"Signed offline heartbeat: {args.out}")
         else:

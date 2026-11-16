@@ -132,6 +132,20 @@ class MeshRegistryTests(unittest.TestCase):
         self.assertFalse(self.registry.list_nodes(now=1000)[0]["execution_authorized"])
 
 
+class NodeKeyFileTests(unittest.TestCase):
+    @unittest.skipUnless(__import__("os").name == "posix", "Unix permissions only")
+    def test_private_key_with_open_permissions_is_refused(self):
+        from phicortex.mesh import _read_key
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "node.key"
+            path.write_bytes(b"a" * 32)
+            path.chmod(0o644)
+            with self.assertRaisesRegex(MeshError, "group/world"):
+                _read_key(path, private=True)
+            # The same file can be read as a *public* key.
+            self.assertEqual(_read_key(path, private=False), b"a" * 32)
+
+
 class NodeCounterTests(unittest.TestCase):
     def test_persistent_monotonic_sequence_through_restarts(self):
         from phicortex.mesh import next_sequence
