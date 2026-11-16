@@ -119,3 +119,14 @@ launch. The source staging is not a privileged/immutable snapshot; host-side
 mutation and actual container isolation must still be tested. The legacy
 HMAC helper remains for migration/tests, not the default CLI execution path.
 See [asymmetric approval design](ASYMMETRIC_APPROVALS.md).
+
+
+## Node enrollment v1 (candidate)
+
+A local operator enrolls a worker's public Ed25519 key against a node UUID
+and approved mode labels. Nodes can generate exactly-scoped signed heartbeat
+packets with a persistent monotonic sequence counter. The coordinator validates
+key signatures, timestamp freshness, replay and revocation before recording
+90-second liveness. No network transport, task leasing, remote worker daemon,
+GPU information or sandbox attestation is introduced. Enrollment is not
+a grant of execution authority. See [Mesh Enrollment](MESH_ENROLLMENT.md).

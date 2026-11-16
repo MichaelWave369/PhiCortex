@@ -163,3 +163,16 @@ signer/worker tools, install `pip install -r requirements-worker.txt`.
 Read [Asymmetric approvals and snapshots](docs/ASYMMETRIC_APPROVALS.md) for the
 Linux workflow and limitations. **Do not treat filesystem permissions as real
 immutability or allow untrusted model code until physical containment tests pass.**
+
+
+## Offline Worker Mesh node enrollment (v1 candidate)
+
+A separate \`python -m phicortex.mesh\` CLI can manually enroll a worker public
+key, sign offline Ed25519 heartbeats, persist monotonic sequence numbers, detect
+missing heartbeats, and revoke worker identities. The coordinator only stores
+public keys and signed liveness metadata. This **does not** add a listener,
+remote task dispatch, automatic work leases, or a new code-execution path.
+
+The optional \`cryptography\` package from \`requirements-worker.txt\` is needed
+for identity tools; ordinary chat remains independent. See the
+[Mesh Enrollment Guide](docs/MESH_ENROLLMENT.md) for an offline walkthrough.
