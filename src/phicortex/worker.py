@@ -200,8 +200,15 @@ def execute(job: dict, *, permit: dict | None = None, key: bytes | None = None,
         # Kill a container that might survive a disconnected Docker client.
         # Fixed, validated name only. Never run shell commands.
         try:
-            cleanup(["docker", "rm", "-f", name], capture_output=True,
-                    text=True, timeout=8, env=_docker_env(), check=False)
+            cleanup_result = cleanup(["docker", "rm", "-f", name], capture_output=True,
+                                     text=True, timeout=8, env=_docker_env(), check=False)
+            # --rm may have already removed a successfully exited container.
+            # Other nonzero responses must not be reported as a clean pass.
+            code = getattr(cleanup_result, "returncode", None)
+            stderr = getattr(cleanup_result, "stderr", "")
+            if code not in (0, 1) or (code == 1 and (
+                    not isinstance(stderr, str) or "No such container" not in stderr)):
+                status = "cleanup_unverified"
         except (OSError, subprocess.SubprocessError):
             # Report cleanup uncertainty rather than claiming containment.
             status = "cleanup_unverified"

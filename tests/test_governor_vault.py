@@ -2,6 +2,7 @@
 import hashlib
 import json
 import os
+import subprocess
 from pathlib import Path
 import tempfile
 import unittest
@@ -92,7 +93,7 @@ class GovernanceTests(unittest.TestCase):
         fake.wait.return_value = 0
         fake.returncode = 0
         launched = mock.Mock(return_value=fake)
-        cleaned = mock.Mock()
+        cleaned = mock.Mock(return_value=subprocess.CompletedProcess([], 0, "", ""))
         with mock.patch("phicortex.worker.platform.system", return_value="Linux"):
             result = execute(self.job, permit=grant, key=self.key, replay_db=self.ledger,
                              guard=lambda: None, launch=launched, cleanup=cleaned)
@@ -102,6 +103,22 @@ class GovernanceTests(unittest.TestCase):
                 execute(self.job, permit=grant, key=self.key, replay_db=self.ledger,
                         guard=lambda: None, launch=launched, cleanup=cleaned)
         self.assertEqual(launched.call_count, 1)
+
+
+    def test_cleanup_failure_is_not_misreported_as_pass(self):
+        grant = issue(self.job, self.key)
+        process = mock.Mock()
+        process.poll.return_value = 0
+        process.wait.return_value = 0
+        process.returncode = 0
+        bad_cleanup = mock.Mock(return_value=subprocess.CompletedProcess(
+            [], 2, "", "permission denied"))
+        with mock.patch("phicortex.worker.platform.system", return_value="Linux"):
+            result = execute(self.job, permit=grant, key=self.key, replay_db=self.ledger,
+                             guard=lambda: None, launch=lambda *a, **k: process,
+                             cleanup=bad_cleanup)
+        self.assertEqual(result["status"], "cleanup_unverified")
+        self.assertEqual(bad_cleanup.call_count, 1)
 
     def test_replay_ledger_must_remain_outside_workspace(self):
         grant = issue(self.job, self.key)
