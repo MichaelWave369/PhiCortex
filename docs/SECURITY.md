@@ -76,3 +76,18 @@ writer or owner changing modes can still mutate it. Hashes are checked before
 a task launches, but the check-to-mount interval remains a TOCTOU risk.
 No real host/gVisor confinement test is claimed. See
 [asymmetric approvals](ASYMMETRIC_APPROVALS.md).
+
+
+## Node enrollment and heartbeat contract
+
+An experimental operator-only local SQLite node registry now accepts signed
+Ed25519 heartbeats from manually enrolled public keys and records replay-safe
+sequence numbers, last receipt time, draining state, and explicit revocation.
+There is NO network listener, node self-enrollment, remote execution, job
+queue or distributed scheduling. A heartbeat establishes key possession
+only and is **not** evidence of sandbox containment, verified compute
+resources or authorization to run a task. Node revocation does not revoke
+independent Governor permits; those remain separate trust decisions.
+Keep private node keys outside projects, the registry DB under a trusted
+OS account, and do not transport signed packets over an untrusted channel.
+See [Mesh Enrollment](MESH_ENROLLMENT.md).
