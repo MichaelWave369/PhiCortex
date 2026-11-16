@@ -69,7 +69,7 @@ def plan(mode: str, root: Path, workspace: Path, image: str,
     workspace = validate_workspace(root, workspace)
     # Docker --mount parses commas as option separators. Never let an
     # operator-controlled path modify the mount contract.
-    if any(ch in str(workspace) for ch in (",", "\\n", "\\r")):
+    if any(ch in str(workspace) for ch in (",", chr(10), chr(13))):
         raise WorkerError("workspace path contains Docker mount separators")
     if (platform_name or platform.system()) != "Linux":
         raise WorkerError("execution requires a tested Linux host; Windows may use a dedicated Linux worker")
